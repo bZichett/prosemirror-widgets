@@ -1,12 +1,12 @@
 let Random = require("prosemirror/node_modules/random-js")
 createjs.MotionGuidePlugin.install()
 
-const maxAtoms = 20, initialSpeed = 2, framerate = 60
+const maxAtoms = 100, initialSpeed = 2, framerate = 60
 
 createjs.Ticker.framerate = framerate
 
 
-let waterMolecules = 5
+let waterMolecules = 2
 
 let random = new Random(Random.engines.mt19937().autoSeed())
 
@@ -21,8 +21,8 @@ function dotProduct(ax, ay, bx, by) {
 }
 
 class Particle {
-	constructor(beaker,r,color) {
-		this.beaker = beaker
+	constructor(burner,r,color) {
+		this.burner = burner
 	    this.r = r
 	    this.mass = this.r * this.r
 		this.dot = 	new createjs.Shape()
@@ -38,6 +38,7 @@ class Particle {
 			this.dy = -.5
 		} else 
 			this.dy = initialSpeed * (random.real(0,1) - 0.5) / this.r
+		this.bounce()
 	}
 
 	move() {
@@ -74,6 +75,13 @@ class Particle {
 				this.dy *= -1
 			else
 				this.dy = -.2
+			if (this.burner.isOn()) {
+				this.dx += this.dx > 0?.1:-.1
+				this.dy -= .1
+			}
+			// randomly absorb molecule and return
+			if (this.r == 2 && random.real(0,1) > .5)
+				this.x = randomBetween(122,278)
 		}
 	}
 
@@ -164,11 +172,19 @@ class Gauge {
 		let y = this.y + 15*Math.sin(this.angle)
 		this.arrow.graphics.clear().beginStroke("#080").setStrokeStyle(2).moveTo(this.x,this.y).lineTo(x,y).endStroke()
 	}
+	
+	lower() {
+		this.angle -= .1
+		let x = this.x + 15*Math.cos(this.angle)
+		let y = this.y + 15*Math.sin(this.angle)
+		this.arrow.graphics.clear().beginStroke("#080").setStrokeStyle(2).moveTo(this.x,this.y).lineTo(x,y).endStroke()
+	}
 }
 
 class Beaker {
-	constructor(stage,x,y) {
+	constructor(stage,burner,x,y) {
 		this.stage = stage
+		this.burner = burner
 		this.beaker = new createjs.Shape()
 		this.beaker.graphics.ss(1).beginStroke("#000").beginFill("#87CEFA").mt(x-20,y).lt(x-20,y+20).arcTo(x-100,y+200,x,y+200,10).lt(x+50,y+200).arcTo(x+100,y+200,x+20,y+20,10).lt(x+20,y+20).lt(x+20,y).endStroke()
 		this.beaker.alpha = 0.6
@@ -183,16 +199,15 @@ class Beaker {
 	}
 	
 	addParticle(r,color,vapor) {
-		let particle = new Particle(this.beaker,r,color)
+		let particle = new Particle(this.burner,r,color)
 		particle.place(vapor)
 		this.particles.push(particle)
-		particle.move()
 		this.stage.addChild(particle.dot)
 	}
 	
 	populate() {
 		for (let i = 0; i < maxAtoms; i++) this.addParticle(1,"#000",false)
-		for (let i = 0; i < waterMolecules; i++) this.addParticle(2,"#00F",false)
+		for (let i = 0; i < waterMolecules; i++) this.addParticle(2,"#FFF",false)
 	}
 	
 	update() {
@@ -203,7 +218,8 @@ class Beaker {
 	}
 	
 	heat() {
-		this.addParticle(2,"#00F",true)
+		this.addParticle(2,"#FFF",true)
+		waterMolecules++
 	}
 }
 
@@ -221,7 +237,6 @@ class Bunsen {
 	}
 	
 	toggle() {
-		console.log(this.flamecover.alpha)
 		this.flamecover.alpha = this.flamecover.alpha?0:1
 	}
 	
@@ -254,8 +269,8 @@ class VaporSim {
 	render() {
 		this.gauge = new Gauge(this.mainstage,210,70)
 		this.thermometer = new Thermometer(this.mainstage,190,30)
-		this.beaker = new Beaker(this.mainstage,200,100)
 		this.bunsen = new Bunsen(this.mainstage,150,302)
+		this.beaker = new Beaker(this.mainstage,this.bunsen,200,100)
 		this.beaker.populate()
 		this.beaker.update()
 		this.mainstage.update()
@@ -277,6 +292,7 @@ class VaporSim {
 	}
 	
 	reset() {
+		waterMolecules = 2
 		this.running = false
 		this.mainstage.removeAllChildren()
 		this.render()
@@ -294,7 +310,11 @@ class VaporSim {
 			this.running = true
 			this.buttons.disableBurner(false)
 		}
-		if (cmd == "burner") this.bunsen.toggle()
+		if (cmd == "burner") {
+			this.bunsen.toggle()
+			if (!this.bunsen.isOn()) this.gauge.lower()
+		}
+		
 		if (cmd == "reset") this.reset()
 	}
 }
