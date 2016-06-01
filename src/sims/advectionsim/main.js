@@ -26,9 +26,9 @@ class Settings {
 	constructor() {
 		this.wind = document.getElementById("wind")
 		this.windout = document.getElementById("windout")
-		this.dir = document.getElementById("dir")
-		this.dur = document.getElementById("dur")
-		this.durout = document.getElementById("durout")
+		this.wdir = document.getElementById("wdir")
+		this.duration = document.getElementById("duration")
+		this.durationout = document.getElementById("durationout")
 		this.contour = document.getElementById("contour")
 		this.mute = document.getElementById("mute")
 		this.listener = null
@@ -40,7 +40,7 @@ class Settings {
 		// IE doesn't have an input event but a change event
 		let event = /msie|trident/g.test(window.navigator.userAgent.toLowerCase())?"change":"input"
 		this.wind.addEventListener(event, e => slidef(e,this.wind,this.windout,this.listener))
-		this.dur.addEventListener(event, e => slidef(e,this.dur,this.durout,this.listener))
+		this.duration.addEventListener(event, e => slidef(e,this.duration,this.durationout,this.listener))
 		this.setWind(0)
 		this.setDuration(0)
 	}
@@ -52,13 +52,13 @@ class Settings {
 		this.windout.value = w
 	}
 
-	getDir() { this.dir.options[this.dir.selectedIndex].text }
+	getDir() { this.dir.options[this.wdir.selectedIndex].text }
 
 	getDuration() { return this.dur.valueAsNumber }
 	
 	setDuration(d) {
-		this.dur.value = d
-		this.durout.value = d
+		this.duration.value = d
+		this.durationout.value = d
 	}
 
 	getContour() { this.countour.options[this.contour.selectedIndex].text }
@@ -96,9 +96,7 @@ class USMap {
 			this.wind.paused = true
 		})
 		this.map = new createjs.Bitmap("assets/usmap.jpg")
-	}
-	
-	render() {
+		this.map.scaleY = 0.9
 		this.stage.addChild(this.map)
 	}
 	
@@ -176,12 +174,11 @@ class AdvectionSim {
 		this.buttons.pause.disabled = play
 	}
 	
-	render() {
+	run() {
 		this.settings.mute.checked = false
 		this.buttons.run.disabled = false
 		this.buttons.pause.disabled = true
 		this.buttons.restart.disabled = false
-		this.usmap.render()
 		createjs.Ticker.framerate = 2
 		createjs.Ticker.addEventListener("tick", e => {
 			this.usmap.tick()
@@ -190,4 +187,4 @@ class AdvectionSim {
 	}
 }
 
-(new AdvectionSim()).render()
+(new AdvectionSim()).run()

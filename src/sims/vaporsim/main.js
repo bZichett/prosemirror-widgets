@@ -1,16 +1,13 @@
 let Random = require("prosemirror/node_modules/random-js")
 createjs.MotionGuidePlugin.install()
 
-const maxAtoms = 100, initialSpeed = 2, framerate = 60
+const maxAtoms = 100, initialSpeed = 2, framerate = 60, cos = Math.cos(toRadians(180-114)), sin = Math.sin(toRadians(180-114))
 
 createjs.Ticker.framerate = framerate
 
-
-let waterMolecules = 2
+let waterMolecules = 0, water_level = 120
 
 let random = new Random(Random.engines.mt19937().autoSeed())
-
-let water_level = 120
 
 function toRadians(degree) { return degree * (Math.PI / 180)}
 
@@ -31,7 +28,7 @@ class Particle {
 
 	place(vapor) {
 		let ty = vapor?120:randomBetween(0,water_level)
-		this.x = randomBetween(182-ty/2,218+ty/2)
+		this.x = randomBetween(190-ty/2,210+ty/2)
 		this.y = ty + 120
 		this.dx = initialSpeed * (random.real(0,1) - 0.5) / this.r
 		if (vapor) {
@@ -50,18 +47,12 @@ class Particle {
 
 	bounce() {
 		let dx = (this.y-120)/2
-		if (this.x <= (186-dx)) {
-			this.x = 186-dx
-			if (this.dx)
-				this.dx *= -1
-			else
-				this.dx = .2
-		} else if (this.x >= (214+dx)) {
-			this.x = 214+dx
-			if (this.dx)
-				this.dx *= -1
-			else
-				this.dx = -.2
+		if (this.x < (186-dx)) {
+			wall.set(184-dx,this.y)
+			this.collide(wall)
+		} else if (this.x > (214+dx)) {
+			wall.set(216+dx,this.y)
+			this.collide(wall)
 		}
 		if (this.y <= 122) {
 			this.y = 122
@@ -76,12 +67,12 @@ class Particle {
 			else
 				this.dy = -.2
 			if (this.burner.isOn()) {
-				this.dx += this.dx > 0?.1:-.1
-				this.dy -= .1
+				this.dx += this.dx > 0?.2:-.2
+				this.dy -= .2
 			}
 			// randomly absorb molecule and return
-			if (this.r == 2 && random.real(0,1) > .5)
-				this.x = randomBetween(122,278)
+			if (this.r == 2 && random.real(0,1) > .7)
+				this.x = randomBetween(130,270)
 		}
 	}
 
@@ -128,9 +119,31 @@ class Particle {
         that.y -= collisionVj * p2
 	}
 }
- 
+
+class Wall {
+	constructor() {
+		this.x = 0
+		this.y = 0
+		this.dx = 0
+		this.dy = 0
+		this.r = 1
+		this.mass = 1000000
+	}
+	
+	set(x,y) {
+		this.x = x
+		this.y = y
+		// return some energy back
+		this.dx = x < 200?.05:-.05
+		this.dy = .05
+	}
+}
+
+let wall = new Wall()
+
 class Thermometer {
 	constructor(stage,x,y) {
+		this.y = y
 		this.tube = new createjs.Shape()
 		this.tube.graphics.beginStroke("#000").beginFill("#FFF").drawRect(x,y,6,100).endStroke()
 		this.bulb = new createjs.Shape()
@@ -138,15 +151,28 @@ class Thermometer {
 		this.fluid = new createjs.Shape()
 		this.fluid.graphics.beginStroke("#000").beginFill("#F00").drawRect(x+1,y+50,4,50).endStroke()
 		this.fluid.setBounds(x+1,y+50,4,50)
+		this.warn = new createjs.Text("Overheating...please reset","14px Arial","#C00")
+		this.warn.x = 700
+		this.warn.y = 10
 		stage.addChild(this.tube)
 		stage.addChild(this.bulb)
 		stage.addChild(this.fluid)
+		stage.addChild(this.warn)
 	}
 	
 	heat() {
 		let r = this.fluid.getBounds()
 		this.fluid.graphics.clear().beginStroke("#000").beginFill("#F00").drawRect(r.x,r.y-1,r.width,r.height+1).endStroke()
 		this.fluid.setBounds(r.x,r.y-1,r.width,r.height+1)
+	}
+	
+	overheat() { 
+		if (this.fluid.getBounds().y <= this.y) {
+			this.warn.x = 100
+			this.warn.y = 10
+			return true
+		} else
+			return false
 	}
 }
 
@@ -218,8 +244,10 @@ class Beaker {
 	}
 	
 	heat() {
-		this.addParticle(2,"#FFF",true)
-		waterMolecules++
+		if (waterMolecules < 30) {
+			this.addParticle(2,"#FFF",true)
+			waterMolecules++
+		}
 	}
 }
 
@@ -284,15 +312,19 @@ class VaporSim {
 			this.beaker.update()
 			this.mainstage.update()
 			if (this.bunsen.isOn()) {
+				if (this.thermometer.overheat()) {
+					this.bunsen.toggle()
+					return
+				}
 				tick++
-				if (tick % framerate == 0) this.heat()
+				if (tick % (framerate/2) == 0) this.heat()
 			} else
 				tick = 0
 		})
 	}
 	
 	reset() {
-		waterMolecules = 2
+		waterMolecules = 0
 		this.running = false
 		this.mainstage.removeAllChildren()
 		this.render()
@@ -313,8 +345,7 @@ class VaporSim {
 		if (cmd == "burner") {
 			this.bunsen.toggle()
 			if (!this.bunsen.isOn()) this.gauge.lower()
-		}
-		
+		}		
 		if (cmd == "reset") this.reset()
 	}
 }
