@@ -82,6 +82,16 @@ class Buttons {
 	}
 }
 
+class Contours {
+	constructor(stage) {
+		this.contours = []
+		let c = new createjs.Shape()
+		c.graphics.setStrokeStyle(1).beginStroke("#000").beginFill("#F00").mt(-100,50).bezierCurveTo(100,50,200,100,600,-100).endStroke()
+		c.alpha = .2
+		this.contours.push(c)
+		stage.addChild(c)
+	}
+}
 
 class USMap {
 	constructor(stage, settings, finish) {
@@ -98,6 +108,7 @@ class USMap {
 		this.map = new createjs.Bitmap("assets/usmap.jpg")
 		this.map.scaleY = 0.9
 		this.stage.addChild(this.map)
+		this.contours = new Contours(stage)
 	}
 	
 	clear() {

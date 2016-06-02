@@ -1,11 +1,9 @@
 let Random = require("prosemirror/node_modules/random-js")
 createjs.MotionGuidePlugin.install()
 
-const maxAtoms = 100, initialSpeed = 2, framerate = 60, cos = Math.cos(toRadians(180-114)), sin = Math.sin(toRadians(180-114))
+const maxAtoms = 100, initialSpeed = 2, framerate = 60, startWater = 2
 
-createjs.Ticker.framerate = framerate
-
-let waterMolecules = 0, water_level = 120
+let particles = [], water_level = 120
 
 let random = new Random(Random.engines.mt19937().autoSeed())
 
@@ -13,8 +11,12 @@ function toRadians(degree) { return degree * (Math.PI / 180)}
 
 function randomBetween(min,max) { return random.integer(min,max)}
 
-function dotProduct(ax, ay, bx, by) {
-    return ax * bx + ay * by
+function dotProduct(ax, ay, bx, by) { return ax * bx + ay * by }
+
+function activeWater() {
+	let cnt = 0
+	for (let i = maxAtoms; i < particles.length; i++) if (!particles[i].condensed) cnt++
+	return cnt
 }
 
 class Particle {
@@ -24,18 +26,20 @@ class Particle {
 	    this.mass = this.r * this.r
 		this.dot = 	new createjs.Shape()
 		this.dot.graphics.beginStroke("#000").beginFill(color).setStrokeStyle(1).drawCircle(0,0,r).endStroke()
+		this.condensed = false
 	}
 
 	place(vapor) {
-		let ty = vapor?120:randomBetween(0,water_level)
+		let ty = vapor? 118: randomBetween(0,water_level)
 		this.x = randomBetween(190-ty/2,210+ty/2)
 		this.y = ty + 120
 		this.dx = initialSpeed * (random.real(0,1) - 0.5) / this.r
 		if (vapor) {
-			this.dy = -.5
+			this.dy = -.3
 		} else 
 			this.dy = initialSpeed * (random.real(0,1) - 0.5) / this.r
 		this.bounce()
+		this.move()
 	}
 
 	move() {
@@ -66,17 +70,17 @@ class Particle {
 				this.dy *= -1
 			else
 				this.dy = -.2
+			// add some heat energy
 			if (this.burner.isOn()) {
 				this.dx += this.dx > 0?.2:-.2
 				this.dy -= .2
 			}
-			// randomly absorb molecule and return
-			if (this.r == 2 && random.real(0,1) > .7)
-				this.x = randomBetween(130,270)
+			if (this.r > 1) this.condense()
 		}
 	}
 
 	collide(that) {
+		if (that.condensed) return
 	    let dx = this.x - that.x
 	    let dy = this.y - that.y
 	    let dr = this.r + that.r
@@ -118,6 +122,19 @@ class Particle {
         that.x -= collisionVi * p2
         that.y -= collisionVj * p2
 	}
+	
+	condense() {
+		this.condensed = true
+		this.dot.y = 1000
+	}
+	
+	evaporate() {
+		this.condensed = false
+		this.y = 234
+		this.x = randomBetween(130,270)
+		this.dy = -.3
+		this.move()
+	}
 }
 
 class Wall {
@@ -128,6 +145,7 @@ class Wall {
 		this.dy = 0
 		this.r = 1
 		this.mass = 1000000
+		this.condensed = false
 	}
 	
 	set(x,y) {
@@ -166,6 +184,8 @@ class Thermometer {
 		this.fluid.setBounds(r.x,r.y-1,r.width,r.height+1)
 	}
 	
+	getTemp() { return this.fluid.getBounds().height}
+	
 	overheat() { 
 		if (this.fluid.getBounds().y <= this.y) {
 			this.warn.x = 100
@@ -192,15 +212,8 @@ class Gauge {
 		stage.addChild(this.arrow)
 	}
 	
-	heat() {
-		this.angle += .1
-		let x = this.x + 15*Math.cos(this.angle)
-		let y = this.y + 15*Math.sin(this.angle)
-		this.arrow.graphics.clear().beginStroke("#080").setStrokeStyle(2).moveTo(this.x,this.y).lineTo(x,y).endStroke()
-	}
-	
-	lower() {
-		this.angle -= .1
+	update() {
+		this.angle = toRadians(270+activeWater())
 		let x = this.x + 15*Math.cos(this.angle)
 		let y = this.y + 15*Math.sin(this.angle)
 		this.arrow.graphics.clear().beginStroke("#080").setStrokeStyle(2).moveTo(this.x,this.y).lineTo(x,y).endStroke()
@@ -221,33 +234,26 @@ class Beaker {
 		stage.addChild(this.stopper)
 		stage.addChild(this.beaker)
 		stage.addChild(this.water)
-		this.particles = []
 	}
 	
 	addParticle(r,color,vapor) {
 		let particle = new Particle(this.burner,r,color)
 		particle.place(vapor)
-		this.particles.push(particle)
+		particles.push(particle)
 		this.stage.addChild(particle.dot)
 	}
 	
 	populate() {
 		for (let i = 0; i < maxAtoms; i++) this.addParticle(1,"#000",false)
-		for (let i = 0; i < waterMolecules; i++) this.addParticle(2,"#FFF",false)
+		for (let i = 0; i < startWater; i++) this.addParticle(2,"#FFF",false)
 	}
 	
 	update() {
-        for (let i = 0; i < maxAtoms+waterMolecules; i++) {
-            for (let j = i + 1; j < maxAtoms+waterMolecules; j++) this.particles[i].collide(this.particles[j]);
+        for (let i = 0; i < particles.length; i++) {
+        	let p = particles[i]
+        	if (!p.condensed) for (let j = i + 1; j < particles.length; j++) p.collide(particles[j])
         }
-		this.particles.forEach(p => { p.move(); p.bounce() })
-	}
-	
-	heat() {
-		if (waterMolecules < 30) {
-			this.addParticle(2,"#FFF",true)
-			waterMolecules++
-		}
+		particles.forEach(p => { if (!p.condensed) { p.move(); p.bounce() }})
 	}
 }
 
@@ -301,40 +307,57 @@ class VaporSim {
 		this.beaker = new Beaker(this.mainstage,this.bunsen,200,100)
 		this.beaker.populate()
 		this.beaker.update()
+		this.gauge.update()
 		this.mainstage.update()
+	}
+	
+	getCondensedParticle() {
+		for (let i = maxAtoms; i < particles.length; i++)
+			if (particles[i].condensed) return particles[i]
+	    return null
+	}
+	
+	evaporate() {
+		let inc = Math.floor((this.thermometer.getTemp() - 48)/4) + 1
+		for (let i = 0; i < inc; i++) {
+			let p = this.getCondensedParticle()
+			if (p)
+				p.evaporate()
+			else
+				this.beaker.addParticle(2,"#FFF",true)
+		}
 	}
 	
 	run() {
 		this.render()
+		createjs.Ticker.framerate = framerate
 		let tick = 0
 		createjs.Ticker.addEventListener("tick", e => {
 			if (!this.running) return
 			this.beaker.update()
+			this.gauge.update()
 			this.mainstage.update()
-			if (this.bunsen.isOn()) {
-				if (this.thermometer.overheat()) {
-					this.bunsen.toggle()
-					return
-				}
-				tick++
-				if (tick % (framerate/2) == 0) this.heat()
-			} else
-				tick = 0
+			if (tick % framerate == 0) this.evaporate()
+			if (tick % (framerate/2) == 0 && this.bunsen.isOn()) this.heat()
+			tick++
 		})
 	}
 	
 	reset() {
-		waterMolecules = 0
 		this.running = false
 		this.mainstage.removeAllChildren()
+		particles = []
 		this.render()
 		this.buttons.disableBurner(true)
 	}
 	
 	heat() {
-		this.beaker.heat()
-		this.thermometer.heat()
-		this.gauge.heat()
+		if (this.thermometer.overheat())
+			this.bunsen.toggle()
+		else {
+			this.thermometer.heat()
+			this.gauge.update()
+		}
 	}
 	
 	press(cmd) {
@@ -344,7 +367,6 @@ class VaporSim {
 		}
 		if (cmd == "burner") {
 			this.bunsen.toggle()
-			if (!this.bunsen.isOn()) this.gauge.lower()
 		}		
 		if (cmd == "reset") this.reset()
 	}
