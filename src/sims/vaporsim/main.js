@@ -25,7 +25,7 @@ class Particle {
 	    this.r = r
 	    this.mass = this.r * this.r
 		this.dot = 	new createjs.Shape()
-		this.dot.graphics.beginStroke("#000").beginFill(color).setStrokeStyle(1).drawCircle(0,0,r).endStroke()
+		this.dot.graphics.beginStroke("#666").beginFill(color).setStrokeStyle(1).drawCircle(0,0,r).endStroke()
 		this.condensed = false
 	}
 
@@ -175,6 +175,11 @@ class Thermometer {
 		stage.addChild(this.tube)
 		stage.addChild(this.bulb)
 		stage.addChild(this.fluid)
+		for (let h = 0; h < 100; h += 10) {
+			let hash = new createjs.Shape()
+			hash.graphics.beginStroke("#888").setStrokeStyle(1).moveTo(x,y+h).lineTo(x+6,y+h).endStroke()
+			stage.addChild(hash)
+		}
 		stage.addChild(this.warn)
 	}
 	
@@ -209,11 +214,22 @@ class Gauge {
 		this.arrow.graphics.beginStroke("#080").setStrokeStyle(2).moveTo(this.x,this.y).lineTo(this.x,this.y-15).endStroke()
 		stage.addChild(this.tube)
 		stage.addChild(this.face)
+		for (let i = 0; i < 360; i += 30) {
+			let rad = toRadians(270 + i)
+			let sx = this.x + 12*Math.cos(rad)
+			let sy = this.y + 12*Math.sin(rad)
+			let x = this.x + 15*Math.cos(rad)
+			let y = this.y + 15*Math.sin(rad)
+			let hash = new createjs.Shape()
+			hash.graphics.beginStroke("#000").setStrokeStyle(1).moveTo(sx,sy).lineTo(x,y).endStroke()
+			stage.addChild(hash)
+		}
 		stage.addChild(this.arrow)
 	}
 	
 	update() {
-		this.angle = toRadians(270+activeWater())
+		let value = Math.floor(activeWater()/2)
+		this.angle = toRadians(270+value)
 		let x = this.x + 15*Math.cos(this.angle)
 		let y = this.y + 15*Math.sin(this.angle)
 		this.arrow.graphics.clear().beginStroke("#080").setStrokeStyle(2).moveTo(this.x,this.y).lineTo(x,y).endStroke()
@@ -237,14 +253,15 @@ class Beaker {
 	}
 	
 	addParticle(r,color,vapor) {
-		let particle = new Particle(this.burner,r,color)
-		particle.place(vapor)
-		particles.push(particle)
-		this.stage.addChild(particle.dot)
+		let p = new Particle(this.burner,r,color)
+		p.place(vapor)
+		particles.push(p)
+		this.stage.addChild(p.dot)
+		return p
 	}
 	
 	populate() {
-		for (let i = 0; i < maxAtoms; i++) this.addParticle(1,"#000",false)
+		for (let i = 0; i < maxAtoms; i++) this.addParticle(1,"#444",false)
 		for (let i = 0; i < startWater; i++) this.addParticle(2,"#FFF",false)
 	}
 	
@@ -311,21 +328,15 @@ class VaporSim {
 		this.mainstage.update()
 	}
 	
-	getCondensedParticle() {
+	getParticle() {
 		for (let i = maxAtoms; i < particles.length; i++)
 			if (particles[i].condensed) return particles[i]
-	    return null
+	    return this.beaker.addParticle(2,"#FFF",true)
 	}
 	
 	evaporate() {
-		let inc = Math.floor((this.thermometer.getTemp() - 48)/4) + 1
-		for (let i = 0; i < inc; i++) {
-			let p = this.getCondensedParticle()
-			if (p)
-				p.evaporate()
-			else
-				this.beaker.addParticle(2,"#FFF",true)
-		}
+		let inc = this.thermometer.getTemp() - 49
+		for (let i = 0; i < inc; i++) this.getParticle().evaporate()
 	}
 	
 	run() {
@@ -334,11 +345,13 @@ class VaporSim {
 		let tick = 0
 		createjs.Ticker.addEventListener("tick", e => {
 			if (!this.running) return
-			this.beaker.update()
-			this.gauge.update()
+			for (let i = 0; i < 2; i++) this.beaker.update()
 			this.mainstage.update()
-			if (tick % framerate == 0) this.evaporate()
-			if (tick % (framerate/2) == 0 && this.bunsen.isOn()) this.heat()
+			if (tick % framerate == 0) {
+				if (this.bunsen.isOn()) this.heat()
+				this.evaporate()
+				this.gauge.update()
+			}
 			tick++
 		})
 	}
@@ -354,10 +367,8 @@ class VaporSim {
 	heat() {
 		if (this.thermometer.overheat())
 			this.bunsen.toggle()
-		else {
+		else
 			this.thermometer.heat()
-			this.gauge.update()
-		}
 	}
 	
 	press(cmd) {

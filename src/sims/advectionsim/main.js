@@ -3,24 +3,26 @@ import {Graph} from "../utils"
 createjs.MotionGuidePlugin.install()
 createjs.Sound.registerPlugins([createjs.WebAudioPlugin, createjs.HTMLAudioPlugin, createjs.FlashAudioPlugin])
 
-/*    double factor[] = { 1.0,0.7,0.0,-0.7,-1.0,-0.7,0,.7};  // cosine of the angle
-    Color colors[] = {  new Color(0,0,255),     // 35 degrees
-                        new Color(0,128,255),   // 40
-                        new Color(128,255,255), // 45
-                        new Color(0,255,0),     // 50
-                        new Color(255,255,0),   // 55
-                        new Color(255,255,255), // 60
-                        new Color(220,220,220), // 65
-                        new Color(200,200,200), // 70
-                        new Color(128,128,128), // 75
-                        new Color(128,64,64),   // 80
-                        new Color(255,128,64),  // 85
-                        new Color(255,128,128), // 90
-                        new Color(255,0,128),   // 95
-                        new Color(255,0,0),     // 100
-                        new Color(64,64,64)    // >100
-               };
-*/
+const ncontour = 15
+//    double factor[] = { 1.0,0.7,0.0,-0.7,-1.0,-0.7,0,.7};  // cosine of the angle
+let contour = [
+	{degree:"<35",color:"#00F"},
+    {degree:"40",color:"#08F"},
+    {degree:"45",color:"#8FF"},
+    {degree:"50",color:"#64E986"},
+    {degree:"55",color:"#FFDB58"},
+    {degree:"60",color:"#C68E17"},
+    {degree:"65",color:"#CCC"},
+    {degree:"70",color:"#AAA"},
+    {degree:"75",color:"#888"},
+    {degree:"80",color:"#844"},
+    {degree:"85",color:"#F84"},
+    {degree:"90",color:"#F88"},
+    {degree:"95",color:"#F08"},
+    {degree:"100",color:"#F00"},
+    {degree:">100",color:"#444"}
+]
+
  
 class Settings {
 	constructor() {
@@ -84,12 +86,25 @@ class Buttons {
 
 class Contours {
 	constructor(stage) {
-		this.contours = []
-		let c = new createjs.Shape()
-		c.graphics.setStrokeStyle(1).beginStroke("#000").beginFill("#F00").mt(-100,50).bezierCurveTo(100,50,200,100,600,-100).endStroke()
-		c.alpha = .2
-		this.contours.push(c)
-		stage.addChild(c)
+		this.contours = new createjs.Container()
+		let y = 600
+		for (let i = ncontour-1; i >= 0; i--) {
+			let c = new createjs.Shape()
+			c.graphics.setStrokeStyle(1).beginStroke("#000").beginFill(contour[i].color).mt(-200,-400).lt(-400,y).quadraticCurveTo(350,y+75,700+y,-100).endStroke()
+			this.contours.addChild(c)
+			y -= 40
+		}
+		stage.addChild(this.contours)
+	}
+	
+	getDegrees(x,y) {
+		for (let i = ncontour-1; i >= 0; i--) {
+			let c = this.contours.getChildAt(i)
+			let pt = c.globalToLocal(x,y)
+			console.log(pt)
+			if (c.hitTest(pt.x,pt.y)) return contour[i].degree
+		}
+		return contour[0].degree
 	}
 }
 
@@ -107,8 +122,20 @@ class USMap {
 		})
 		this.map = new createjs.Bitmap("assets/usmap.jpg")
 		this.map.scaleY = 0.9
-		this.stage.addChild(this.map)
+		this.map.alpha = .3
 		this.contours = new Contours(stage)
+		this.stage.addChild(this.map)
+		let y = 20
+		for (let i = 0; i < ncontour; i++) {
+			let r = new createjs.Shape()
+			r.graphics.setStrokeStyle(1).beginStroke("#000").beginFill(contour[i].color).rect(670,y,30,25).endStroke()
+			let t = new createjs.Text(contour[i].degree,"bold 10px Arial","#FFF")
+			t.x = 675
+			t.y = y+7
+			stage.addChild(r)
+			stage.addChild(t)
+			y += 25
+		}
 	}
 	
 	clear() {
@@ -133,15 +160,12 @@ class USMap {
 	}
 	
 	update() {
-	}
-	
-	tick() {
 		if (!this.running) return
 		if (this.time >= 24) { 
 			this.stop()
 			return
 		}
-		this.update()
+		console.log(this.contours.getDegrees(100,300))
 	}
 }
 
@@ -190,10 +214,12 @@ class AdvectionSim {
 		this.buttons.run.disabled = false
 		this.buttons.pause.disabled = true
 		this.buttons.restart.disabled = false
-		createjs.Ticker.framerate = 2
+		createjs.Ticker.framerate = 1
+		let tick = 0
 		createjs.Ticker.addEventListener("tick", e => {
-			this.usmap.tick()
+			this.usmap.update()
 			this.mainstage.update()
+			tick++
 		})
 	}
 }
