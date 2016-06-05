@@ -3,10 +3,12 @@ import {Graph} from "../utils"
 createjs.MotionGuidePlugin.install()
 createjs.Sound.registerPlugins([createjs.WebAudioPlugin, createjs.HTMLAudioPlugin, createjs.FlashAudioPlugin])
 
-const ncontour = 15
-//    double factor[] = { 1.0,0.7,0.0,-0.7,-1.0,-0.7,0,.7};  // cosine of the angle
+const ncontour = 15, pixperkm = .25, knot = 1.852
+
+function toRadians(degree) { return degree * (Math.PI / 180)}
+
 let contour = [
-	{degree:"<35",color:"#00F"},
+	{degree:"<35",color:"#008080"},
     {degree:"40",color:"#08F"},
     {degree:"45",color:"#8FF"},
     {degree:"50",color:"#64E986"},
@@ -23,15 +25,25 @@ let contour = [
     {degree:">100",color:"#444"}
 ]
 
+let city = [
+    {name: "Des Moines, IA", x: 383, y:142},
+    {name: "Seattle, WA", x: 63, y:31},
+    {name: "Los Angeles, CA", x: 47, y:228},
+    {name: "Denver, CO", x: 245, y:175},
+    {name: "Dallas, TX", x: 314, y:295},
+    {name: "Chicago, IL", x: 454, y:137},
+    {name: "New York, NY", x: 627, y:136},
+    {name: "Atlanta, GA", x: 528, y:268}
+]
  
 class Settings {
-	constructor() {
+	constructor(change) {
 		this.wind = document.getElementById("wind")
 		this.windout = document.getElementById("windout")
 		this.wdir = document.getElementById("wdir")
 		this.duration = document.getElementById("duration")
 		this.durationout = document.getElementById("durationout")
-		this.contour = document.getElementById("contour")
+		this.spacing = document.getElementById("spacing")
 		this.mute = document.getElementById("mute")
 		this.listener = null
 		function slidef(e,input, out, f) {
@@ -43,10 +55,28 @@ class Settings {
 		let event = /msie|trident/g.test(window.navigator.userAgent.toLowerCase())?"change":"input"
 		this.wind.addEventListener(event, e => slidef(e,this.wind,this.windout,this.listener))
 		this.duration.addEventListener(event, e => slidef(e,this.duration,this.durationout,this.listener))
-		this.setWind(0)
-		this.setDuration(0)
+		this.setWind(5)
+		this.setDuration(5)
 	}
-	
+
+	addChangeListener(listener) {
+		this.wdir.addEventListener("change", e => {
+	    	e.stopPropagation()
+	    	if (listener) listener.changeDir()
+		})
+		this.spacing.addEventListener("change", e => {
+	    	e.stopPropagation()
+	    	if (listener) listener.changeSpacing()
+		})
+	}
+
+	addMuteListener(listener) {
+		this.mute.addEventListener("click", e => {
+	    	e.stopPropagation()
+	    	if (listener) listener.changeMute()
+		})
+	}
+
 	getWind() { return this.wind.valueAsNumber }
 	
 	setWind(w) {
@@ -54,16 +84,16 @@ class Settings {
 		this.windout.value = w
 	}
 
-	getDir() { this.dir.options[this.wdir.selectedIndex].text }
+	getDir() { return parseInt(this.wdir.options[this.wdir.selectedIndex].value) }
 
-	getDuration() { return this.dur.valueAsNumber }
+	getDuration() { return this.duration.valueAsNumber }
 	
 	setDuration(d) {
 		this.duration.value = d
 		this.durationout.value = d
 	}
 
-	getContour() { this.countour.options[this.contour.selectedIndex].text }
+	getSpacing() { return parseInt(this.spacing.options[this.spacing.selectedIndex].value) }
 
 	getMute() { return this.mute.checked }
 
@@ -74,37 +104,103 @@ class Buttons {
 	constructor() {
 		this.run = document.getElementById("run")
 		this.pause = document.getElementById("pause")
-		this.restart = document.getElementById("restart")
+		this.reset = document.getElementById("reset")
 	}
 	
 	addListener(listener) { 
 		this.run.addEventListener("click", e => listener(e))
 		this.pause.addEventListener("click", e => listener(e))
-		this.restart.addEventListener("click", e => listener(e))
+		this.reset.addEventListener("click", e => listener(e))
 	}
 }
 
-class Contours {
-	constructor(stage) {
-		this.contours = new createjs.Container()
-		let y = 600
-		for (let i = ncontour-1; i >= 0; i--) {
-			let c = new createjs.Shape()
-			c.graphics.setStrokeStyle(1).beginStroke("#000").beginFill(contour[i].color).mt(-200,-400).lt(-400,y).quadraticCurveTo(350,y+75,700+y,-100).endStroke()
-			this.contours.addChild(c)
-			y -= 40
+class Cities {
+	constructor(stage,contours,dir) {
+		this.contours = contours
+		this.temps = []
+		this.winds = []
+		city.forEach(c => {
+			let s = new createjs.Shape()
+			s.graphics.setStrokeStyle(2).beginStroke("#000").beginFill("#000").drawCircle(c.x,c.y,2).endStroke()
+			stage.addChild(s)
+			let t = new createjs.Text(c.name,"10px Arial","#000")
+			t.x = c.x - 20
+			t.y = c.y - 30
+			stage.addChild(t)
+			let temp = new createjs.Text("","10px Arial","#000")
+			temp.x = c.x - 15
+			temp.y = c.y - 15
+			stage.addChild(temp)
+			this.temps.push(temp)
+			let wind = new createjs.Shape()
+			stage.addChild(wind)
+			this.winds.push(wind)
+		})
+		this.updateTemps()
+		this.updateDir(dir)
+	}
+	
+	updateDir(dir) {
+		let radians = toRadians(dir)
+		let dx = Math.floor(10*Math.cos(radians))
+		let dy = Math.floor(10*Math.sin(radians))
+		for (let i = 0; i < city.length; i++) {
+			let c = city[i], w = this.winds[i]
+			let x = Math.floor(c.x+dx)
+			let y = Math.floor(c.y+dy)
+			w.graphics.clear().setStrokeStyle(2).beginStroke("#000").mt(c.x,c.y).lineTo(x,y).endStroke()
 		}
+	}
+	
+	updateTemps() {
+		for (let i = 0; i < city.length; i++) {
+			let t = this.temps[i], c = city[i]
+			t.text = this.contours.getDegrees(c.x,c.y)
+		}
+	}	
+}
+
+class Contours {
+	constructor(stage,spacing) {
+		this.stage = stage
+		this.contours = new createjs.Container()
 		stage.addChild(this.contours)
+		this.render(spacing)
+		this.reset()
+	}
+	
+	reset() {
+		this.contours.x = 0
+		this.contours.y = -50
+	}
+	
+	render(spacing) {
+		spacing = spacing/4 // convert to pixel height
+		let y = spacing/2+50
+		for (let i = 0; i < ncontour; i++) {
+			let c = new createjs.Shape()
+			c.graphics.setStrokeStyle(spacing).beginStroke(contour[i].color).mt(-100,y).lt(800,y).endStroke()
+			this.contours.addChild(c)
+			y += spacing
+		}
 	}
 	
 	getDegrees(x,y) {
-		for (let i = ncontour-1; i >= 0; i--) {
+		for (let i = 0; i < ncontour; i++) {
 			let c = this.contours.getChildAt(i)
-			let pt = c.globalToLocal(x,y)
-			console.log(pt)
-			if (c.hitTest(pt.x,pt.y)) return contour[i].degree
+			if (c.hitTest(x,y)) return contour[i].degree
 		}
 		return contour[0].degree
+	}
+	
+	updateSpacing(spacing) {
+		this.contours.removeAllChildren()
+		this.render(spacing)
+	}
+	
+	move(dx,dy) {
+		this.contours.x += dx
+		this.contours.y += dy
 	}
 }
 
@@ -113,19 +209,16 @@ class USMap {
 		this.stage = stage
 		this.settings = settings
 		this.finish = finish
-		this.level = 0
 		this.time = 0
-		createjs.Sound.registerSound({id: "wind", src:"assets/wind.mp3"})
-		createjs.Sound.on("fileload", e => {
-			this.wind = createjs.Sound.play("wind",{loop: -1})
-			this.wind.paused = true
-		})
+		this.dx = 0
+		this.dy = 0
+		this.settings.addChangeListener(this)
 		this.map = new createjs.Bitmap("assets/usmap.jpg")
 		this.map.scaleY = 0.9
 		this.map.alpha = .3
-		this.contours = new Contours(stage)
+		this.contours = new Contours(stage,settings.getSpacing())
 		this.stage.addChild(this.map)
-		let y = 20
+		let y = 10
 		for (let i = 0; i < ncontour; i++) {
 			let r = new createjs.Shape()
 			r.graphics.setStrokeStyle(1).beginStroke("#000").beginFill(contour[i].color).rect(670,y,30,25).endStroke()
@@ -136,36 +229,40 @@ class USMap {
 			stage.addChild(t)
 			y += 25
 		}
+		this.cities = new Cities(stage, this.contours, settings.getDir())
+		this.updateVelocity()
 	}
 	
-	clear() {
-		this.stop()
-		this.stage.removeAllChildren()
-		this.render()
+	reset() {
+		this.contours.reset()
+		this.time = 0
 	}
 	
-	run() {
-		this.running = true
+	changeDir() {
+		this.cities.updateDir(this.settings.getDir())
+		this.updateVelocity()
 	}
 	
-	stop() {
-		this.running = false;
-		this.wind.paused = true
-		if (this.finish) this.finish()
+	changeSpacing() {
+		this.contours.updateSpacing(this.settings.getSpacing())
+		this.cities.updateTemps()
+		this.updateVelocity()
 	}
-		
-	pause(pause) { 
-		this.running = !pause
-		if (pause === true) this.wind.paused = true
+	
+	updateVelocity() {
+		let radians = toRadians(this.settings.getDir()+180)
+		let speed = knot * pixperkm * this.settings.getWind()
+		this.dx = speed*Math.cos(radians)
+		this.dy = speed*Math.sin(radians)
 	}
 	
 	update() {
-		if (!this.running) return
-		if (this.time >= 24) { 
-			this.stop()
+		if (this.time >= this.settings.getDuration()) { 
+			if (this.finish) this.finish()
 			return
 		}
-		console.log(this.contours.getDegrees(100,300))
+		this.contours.move(this.dx,this.dy)
+		this.time++
 	}
 }
 
@@ -175,33 +272,54 @@ class AdvectionSim {
 		this.buttons = new Buttons()
 		this.settings = new Settings()
 		this.usmap = new USMap(this.mainstage, this.settings, () => {
-			this.buttons.restart.disabled = false
+			this.buttons.reset.disabled = false
 			this.buttons.pause.disabled = true
 		})
-		this.pause = false
+		createjs.Sound.registerSound({id: "wind", src:"assets/wind.mp3"})
+		createjs.Sound.on("fileload", e => {
+			this.wind = createjs.Sound.play("wind",{loop: -1})
+			this.wind.paused = true
+		})
+		this.running = false
 		this.buttons.addListener(e => {
 			switch(e.target.id) {
 			case "run":
 				this.enablePlay(false)
 				this.buttons.pause.value = "Pause"
-				this.pause = false
-				this.usmap.run()
+				this.running = true
+				this.usmap.updateVelocity()
+				this.playAudio(true)
 				break
 			case "pause":
-				this.pause = !this.pause
-				this.usmap.pause(this.pause)
-				e.target.value = this.pause? "Resume":"Pause"
+				this.running = !this.running
+				e.target.value = this.running? "Pause":"Resume"
+				this.playAudio(this.running)
 				break
-			case "restart":
+			case "reset":
 				this.reset()
-				this.usmap.clear()
+				this.playAudio(false)
 				break
 			}
 		})
+		this.settings.addMuteListener(this)
 	}
-		
+	
+	playAudio(value) {
+		if (this.settings.getMute()) return
+		this.wind.paused = !value
+	}
+	
+	changeMute() {
+		if (this.settings.getMute())
+			this.wind.paused = true
+		else if (this.running) 
+			this.wind.paused = false
+	}
+	
 	reset() {
 		this.enablePlay(true)
+		this.running = false
+		this.usmap.reset()
 	}
 	
 	enablePlay(play) {
@@ -213,11 +331,11 @@ class AdvectionSim {
 		this.settings.mute.checked = false
 		this.buttons.run.disabled = false
 		this.buttons.pause.disabled = true
-		this.buttons.restart.disabled = false
+		this.buttons.reset.disabled = false
 		createjs.Ticker.framerate = 1
 		let tick = 0
 		createjs.Ticker.addEventListener("tick", e => {
-			this.usmap.update()
+			if (this.running) this.usmap.update()
 			this.mainstage.update()
 			tick++
 		})
