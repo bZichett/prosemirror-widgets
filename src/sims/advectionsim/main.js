@@ -257,12 +257,11 @@ class USMap {
 	}
 	
 	update() {
-		if (this.time >= this.settings.getDuration()) { 
-			if (this.finish) this.finish()
-			return
-		}
-		this.contours.move(this.dx,this.dy)
-		this.time++
+		if (this.time < this.settings.getDuration()) {
+			this.contours.move(this.dx,this.dy)
+			this.time++
+		} else if (this.finish) 
+			this.finish()
 	}
 }
 
@@ -274,6 +273,7 @@ class AdvectionSim {
 		this.usmap = new USMap(this.mainstage, this.settings, () => {
 			this.buttons.reset.disabled = false
 			this.buttons.pause.disabled = true
+			this.wind.paused = true
 		})
 		createjs.Sound.registerSound({id: "wind", src:"assets/wind.mp3"})
 		createjs.Sound.on("fileload", e => {
