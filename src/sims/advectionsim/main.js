@@ -3,7 +3,7 @@ import {Graph} from "../utils"
 createjs.MotionGuidePlugin.install()
 createjs.Sound.registerPlugins([createjs.WebAudioPlugin, createjs.HTMLAudioPlugin, createjs.FlashAudioPlugin])
 
-const ncontour = 15, pixperkm = .25, knot = 1.852
+const ncontour = 15, pixpermile = .25, milesperknot = 1.15
 
 function toRadians(degree) { return degree * (Math.PI / 180)}
 
@@ -251,7 +251,7 @@ class USMap {
 	
 	updateVelocity() {
 		let radians = toRadians(this.settings.getDir()+180)
-		let speed = knot * pixperkm * this.settings.getWind()
+		let speed = milesperknot * pixpermile * this.settings.getWind()
 		this.dx = speed*Math.cos(radians)
 		this.dy = speed*Math.sin(radians)
 	}
