@@ -181,7 +181,7 @@ class Rad {
 		})
 		this.balloon.addEventListener("pressup", e => {
 			let i = this.getAltIndex(), alt = this.data.altitude[i]
-			let y = this.atgraph.yaxis.getLoc(alt/1000.00)
+			let y = this.atgraph.yaxis.getLoc(alt)
 			this.showBalloon(y)
 		})
 		this.changeSetting(this.settings.getSurface(),this.settings.getTime())
@@ -197,7 +197,7 @@ class Rad {
 		this.balloon.y = y
 	    this.height.x = balloon_x + 20
 	    this.height.y = y+10
-	    this.height.text = this.atgraph.yaxis.getValue(y).toFixed(2)
+	    this.height.text = parseInt(this.atgraph.yaxis.getValue(y))
 	}
 		
 	addChildren() {
@@ -271,7 +271,7 @@ class Rad {
 			let temps = this.data[st]
 			for(let i = 0; i < points; i++) {
 				if (this.plotted[st][i] === true) {
-					this.atgraph.plot(toCentigrade(temps[i]),alts[i]/1000.0)
+					this.atgraph.plot(toCentigrade(temps[i]),alts[i])
 				}
 			}
 		})
