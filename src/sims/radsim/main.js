@@ -111,18 +111,17 @@ class ATGraph extends Graph {
 			w: 300,
 			h: 300,
 			xlabel: "Temperature(C)",
-			ylabel: "Z(km)",
+			ylabel: "Z(m)",
 			xscale: "linear",
 			yscale: "linear",
 			minX: -8,
 			maxX: 12,
 			minY: 0,
-			maxY: 1.5,
+			maxY: 1500,
 			majorX: 2,
 			minorX: 1,
-			majorY: 0.1,
-			minorY: 0.05,
-			precisionY : 1
+			majorY: 100,
+			minorY: 50
 		})
 	}
 	
@@ -133,9 +132,9 @@ class ATGraph extends Graph {
 		for (let t = -8; t < 14; t += 2) {
             let x = this.xaxis.getLoc(t)
             let y = this.yaxis.getLoc(0)
-			this.drawLine(x,y,x,this.yaxis.getLoc(1.5))
+			this.drawLine(x,y,x,this.yaxis.getLoc(1500))
 		}
-		for (let z = 0; z < 1.5; z += 0.1) {
+		for (let z = 0; z < 1500; z += 100) {
             let x = this.xaxis.getLoc(-8)
             let y = this.yaxis.getLoc(z)
 			this.drawLine(x,y,this.xaxis.getLoc(12),y)
