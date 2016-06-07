@@ -2,7 +2,7 @@ import {Graph} from "../utils"
  
 createjs.MotionGuidePlugin.install()
 createjs.Sound.registerPlugins([createjs.WebAudioPlugin, createjs.HTMLAudioPlugin, createjs.FlashAudioPlugin])
-createjs.Ticker.frameRate = 30
+createjs.Ticker.framerate = 10
 
 const points = 17, balloon_x = 200, balloon_y = 270
 
@@ -175,11 +175,12 @@ class Rad {
 		this.moon = new createjs.Shape().set({x:420,y:20})
 		this.moon.graphics.beginFill("#FFFFFF").drawCircle(0,0,10)
 		this.settings.addListener((s,t) => this.changeSetting(s,t))
-		createjs.Touch.enable(this.stage)
 		this.balloon.addEventListener("pressmove", e => {
+			e.nativeEvent.preventDefault()
 			if (e.stageY < balloon_y) this.showBalloon(e.stageY)
 		})
 		this.balloon.addEventListener("pressup", e => {
+			e.nativeEvent.preventDefault()
 			let i = this.getAltIndex(), alt = this.data.altitude[i]
 			let y = this.atgraph.yaxis.getLoc(alt)
 			this.showBalloon(y)
@@ -299,15 +300,16 @@ class Rad {
 	}
 	
 	clearAll() {
+		this.showBalloon(balloon_y)
 		this.clearProfiles()
 		this.plotProfiles()
-		this.balloon.y = balloon_y
 	}
 }
 
 class RadSim {
 	constructor() {
 		this.mainstage = new createjs.Stage("maincanvas")
+		createjs.Touch.enable(this.mainstage)
 		this.atstage = new createjs.Stage("atgraph")
 		this.buttons = new Buttons()
 		this.settings = new Settings()
@@ -332,6 +334,7 @@ class RadSim {
 	render() {
 		this.atgraph.render()
 		this.rad.render()
+		createjs.Ticker.timingMode = createjs.Ticker.RAF_SYNCHED
 		createjs.Ticker.addEventListener("tick", e => {
 			this.atstage.update()
 			this.mainstage.update()
