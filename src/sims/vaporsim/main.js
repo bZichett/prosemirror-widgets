@@ -318,14 +318,13 @@ class VaporSim {
 		this.running = false
 	}	
 	render() {
-		this.bunsen = new Bunsen(this.mainstage,150,302)
 		this.gauge = new Gauge(this.mainstage,210,70)
 		this.thermometer = new Thermometer(this.mainstage,190,30)
+		this.bunsen = new Bunsen(this.mainstage,150,302)
 		this.beaker = new Beaker(this.mainstage,this.bunsen,200,100)
 		this.beaker.populate()
 		this.beaker.update()
 		this.gauge.update()
-		this.mainstage.update()
 	}
 	
 	getParticle() {
@@ -344,9 +343,9 @@ class VaporSim {
 		createjs.Ticker.framerate = framerate
 		let tick = 0
 		createjs.Ticker.addEventListener("tick", e => {
+			this.mainstage.update()
 			if (!this.running) return
 			for (let i = 0; i < 2; i++) this.beaker.update()
-			this.mainstage.update()
 			if (tick % framerate == 0) {
 				if (this.bunsen.isOn()) this.heat()
 				this.evaporate()
