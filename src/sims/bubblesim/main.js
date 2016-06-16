@@ -1,7 +1,7 @@
 let Random = require("prosemirror/node_modules/random-js")
 createjs.MotionGuidePlugin.install()
 
-const initialSpeed = 2, framerate = 30, startr = 20, maxAtmos = 500, maxParcel = 5, maxVelComp = 3.5, randAccel = 0.2
+const initialSpeed = 2, framerate = 30, startr = 20, maxAtmos = 2000, maxParcel = 10, maxVelComp = 3.5, randAccel = 0.2
 
 let random = new Random(Random.engines.mt19937().autoSeed())
 
@@ -21,7 +21,7 @@ class Particle {
 		this.dx = initialSpeed * (random.real(0,1) - 0.5) / this.r
 		this.dy = initialSpeed * (random.real(0,1) - 0.5) / this.r
 		this.dot = 	new createjs.Shape()
-		this.dot.graphics.beginStroke("#000").setStrokeStyle(1).drawCircle(0,0,this.r).endStroke()
+		this.dot.graphics.beginStroke("#000").setStrokeStyle(1).beginFill("#EEE").drawCircle(0,0,this.r).endStroke()
 	}
 
 	place(x,y) {
@@ -33,12 +33,37 @@ class Particle {
 	
 	move() { this.place(this.x+this.dx,this.y+this.dy)}
 
-	resize(r) {
-		this.r = r
-		this.dot.graphics.clear().beginStroke("#000").setStrokeStyle(1).drawCircle(0,0,this.r).endStroke()
+	accelerate() {
+		//random accleration
+		this.dx += (1-2*Math.random())*randAccel
+		this.dy += (1-2*Math.random())*randAccel
+		
+		//don't let velocity get too large
+		if (this.dx > maxVelComp) {
+			this.dx = maxVelComp
+		}
+		else if (this.dx < -maxVelComp) {
+			this.dx = -maxVelComp
+		}
+		if (this.dy > maxVelComp) {
+			this.dy = maxVelComp
+		}
+		else if (this.dy < -maxVelComp) {
+			this.dy = -maxVelComp
+		}
 	}
 	
-	bounce() { if (this.container.bounce(this)) this.collide(this.container)}
+	resize(r) {
+		this.r = r
+		this.dot.graphics.clear().beginStroke("#000").setStrokeStyle(1).beginFill("#EEE").drawCircle(0,0,this.r).endStroke()
+	}
+	
+	bounce() { 
+		if (this.container.bounce(this)) {
+			this.collide(this.container)
+			this.accelerate()
+		}
+	}
 
 	collide(that) {
 	    let dx = this.x - that.x
@@ -128,7 +153,10 @@ class Parcel extends Container {
 	
 	area() { return Math.PI*this.surrogate.r*this.surrogate.r }
 	
-	rise() { this.surrogate.place(this.surrogate.x,this.surrogate.y-1) }
+	rise() { 
+		this.surrogate.place(this.surrogate.x,this.surrogate.y-1) 
+		this.accel -= 0.1
+	}
 	
 	expand() { return this.surrogate.resize(this.surrogate.r+3) }
 	
@@ -144,27 +172,9 @@ class Parcel extends Container {
 		if (this.contains(p)) return false
 		let lastX = p.x;
 		let lastY = p.y;
-		
-		//random accleration
-		p.dx += (1-2*Math.random())*randAccel;
-		p.dy += (1-2*Math.random())*randAccel;
-		
-		//don't let velocity get too large
-		if (p.dx > maxVelComp) {
-			p.dx = maxVelComp;
-		}
-		else if (p.velX < -maxVelComp) {
-			p.dx = -maxVelComp;
-		}
-		if (p.dy > maxVelComp) {
-			p.dy = maxVelComp;
-		}
-		else if (p.dy < -maxVelComp) {
-			p.dy = -maxVelComp;
-		}
-		
-		p.x += p.dx;
-		p.y += p.dy;
+				
+		p.x += p.dx
+		p.y += p.dy
 		
 		let x = p.x - this.surrogate.x, y = p.y - this.surrogate.y, r = this.surrogate.r
 		let radSquare= x*x + y*y
@@ -183,8 +193,8 @@ class Parcel extends Container {
 		    p.x = this.surrogate.x + exitX
 		    p.y = this.surrogate.y + exitY
 		    let twiceProjFactor = 2*(exitX*p.dx + exitY*p.dy)/boundaryRadSquare
-		    p.dx -= twiceProjFactor*exitX
-		    p.dy -= twiceProjFactor*exitY
+		    p.dx -= twiceProjFactor*exitX -.02
+		    p.dy -= twiceProjFactor*exitY -.02
 		}
 	    return false
 	}
@@ -227,14 +237,13 @@ class Atmosphere extends Container {
 	}
 	
 	update(tick) {
+		if (this.parcel.surrogate.y < 100) return
 		for (let i = 0; i < 3; i++) {
 			this.parcel.update()
 			super.update()
 		}
-		if (this.parcel.surrogate.y > 100)
-			this.parcel.rise()
+		this.parcel.rise()
 		if (tick % 60 == 0) {
-			//if (this.density() > this.parcel.density())
 			this.parcel.expand()
 		}
 	}
