@@ -5,7 +5,7 @@ export class Graph {
 		this.xaxis = new Axis({
 			stage: this.stage,
 			label: spec.xlabel,
-			dim: { w: spec.w, h: spec.h, min: spec.minX, max: spec.maxX },
+			dim: { x: spec.x, y: spec.y, w: spec.w, h: spec.h, min: spec.minX, max: spec.maxX },
 			orient: "horizontal",
 			scale: spec.xscale,
 			major: spec.majorX,
@@ -15,7 +15,7 @@ export class Graph {
 		this.yaxis = new Axis({
 			stage: this.stage,
 			label: spec.ylabel,
-			dim: { w: spec.w, h: spec.h, min: spec.minY, max: spec.maxY },
+			dim: { x: spec.x, y: spec.y, w: spec.w, h: spec.h, min: spec.minY, max: spec.maxY },
 			orient: "vertical",
 			scale: spec.yscale,
 			major: spec.majorY,
@@ -24,8 +24,14 @@ export class Graph {
 		})
 		this.last = null
 		this.marker = null
-		this.color = "#000000"
+		this.color = "#000"
 		this.dotted = false
+		if (spec.background) {
+			let b = new createjs.Shape()
+			b.graphics.beginStroke("#AAA").beginFill(spec.background).drawRect(spec.x,spec.y-spec.h,spec.w,spec.h).endStroke()
+			b.alpha = 0.3
+			spec.stage.addChild(b)
+		}
 	}
 	
 	setDotted(dotted) {

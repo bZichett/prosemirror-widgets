@@ -1,7 +1,7 @@
 let Random = require("prosemirror/node_modules/random-js")
 createjs.MotionGuidePlugin.install()
 
-const initialSpeed = 2, framerate = 30, startr = 20, maxAtmos = 2000, maxParcel = 10, maxVelComp = 3.5, randAccel = 0.2
+const initialSpeed = 3, framerate = 60, startr = 20, maxAtmos = 1500, maxParcel = 10, maxVelComp = 4, randAccel = 0.4, dr = 10/framerate
 
 let random = new Random(Random.engines.mt19937().autoSeed())
 
@@ -18,8 +18,8 @@ class Particle {
 		this.y = 0
 	    this.r = 1
 	    this.mass = 1
-		this.dx = initialSpeed * (random.real(0,1) - 0.5) / this.r
-		this.dy = initialSpeed * (random.real(0,1) - 0.5) / this.r
+		this.dx = container.speed * (random.real(0,1) - 0.5) / this.r
+		this.dy = container.speed * (random.real(0,1) - 0.5) / this.r
 		this.dot = 	new createjs.Shape()
 		this.dot.graphics.beginStroke("#000").setStrokeStyle(1).beginFill("#EEE").drawCircle(0,0,this.r).endStroke()
 	}
@@ -31,7 +31,7 @@ class Particle {
 		this.dot.y = y
 	}
 	
-	move() { this.place(this.x+this.dx,this.y+this.dy)}
+	move() { this.place(this.x+this.dx,this.y+this.dy) }
 
 	accelerate() {
 		//random accleration
@@ -53,9 +53,9 @@ class Particle {
 		}
 	}
 	
-	resize(r) {
-		this.r = r
-		this.dot.graphics.clear().beginStroke("#000").setStrokeStyle(1).beginFill("#EEE").drawCircle(0,0,this.r).endStroke()
+	resize(dr) {
+		this.r += dr
+		this.dot.graphics.clear().beginStroke("#000").setStrokeStyle(1).setStrokeDash([2,2]).beginFill("#EEE").drawCircle(0,0,this.r).endStroke()
 	}
 	
 	bounce() { 
@@ -110,9 +110,10 @@ class Particle {
 }
 
 class Container {
-	constructor(stage, maxAtoms) {
+	constructor(stage, maxAtoms, speed) {
 		this.stage = stage
 		this.maxAtoms = maxAtoms
+		this.speed = speed
 		this.particles = []
 	}
 	
@@ -141,7 +142,7 @@ class Container {
 
 class Parcel extends Container {
 	constructor(stage,x,y,r) {
-		super(stage, maxParcel)
+		super(stage, maxParcel, initialSpeed-2)
 		this.surrogate = new Particle(this)
 		this.surrogate.place(x,y)
 		this.surrogate.resize(r)
@@ -153,12 +154,10 @@ class Parcel extends Container {
 	
 	area() { return Math.PI*this.surrogate.r*this.surrogate.r }
 	
-	rise() { 
-		this.surrogate.place(this.surrogate.x,this.surrogate.y-1) 
-		this.accel -= 0.1
+	move(dy,dr) {
+		this.surrogate.place(this.surrogate.x,this.surrogate.y+dy) 
+		this.surrogate.resize(dr)	
 	}
-	
-	expand() { return this.surrogate.resize(this.surrogate.r+3) }
 	
 	contains(p) {
 		let dx = p.x-this.surrogate.x
@@ -193,8 +192,10 @@ class Parcel extends Container {
 		    p.x = this.surrogate.x + exitX
 		    p.y = this.surrogate.y + exitY
 		    let twiceProjFactor = 2*(exitX*p.dx + exitY*p.dy)/boundaryRadSquare
-		    p.dx -= twiceProjFactor*exitX -.02
-		    p.dy -= twiceProjFactor*exitY -.02
+		    p.dx -= twiceProjFactor*exitX
+		    p.dy -= twiceProjFactor*exitY
+		    if (!p.dx) p.dx = 0.1
+		    if (!p.dy) p.dy = 0.1
 		}
 	    return false
 	}
@@ -210,13 +211,14 @@ class Parcel extends Container {
 
 class Atmosphere extends Container {
 	constructor(stage,x,y,w,h) {
-		super(stage,maxAtmos)
+		super(stage,maxAtmos,initialSpeed)
 		this.x = x
 		this.y = y
 		this.w = w
 		this.h = h
 		this.r = 1
-		this.parcel = new Parcel(stage,this.x+this.w/2,this.y+this.h-startr-1,startr)
+		this.float = true
+		this.parcel = new Parcel(stage,w/2,h-startr-3,startr)
 		this.particles.push(this.parcel.surrogate)
 		this.parcel.populate()
 		this.populate()
@@ -237,23 +239,35 @@ class Atmosphere extends Container {
 	}
 	
 	update(tick) {
-		if (this.parcel.surrogate.y < 100) return
+		if (this.float) {
+			if (this.parcel.surrogate.y < this.parcel.surrogate.r) {
+				this.parcel.surrogate.y = this.parcel.surrogate.r+1
+				return false
+			}
+			this.parcel.move(-1,dr)
+		} else {
+			if (this.parcel.surrogate.y > (298-this.parcel.surrogate.r)) {
+				this.parcel.surrogate.r = startr
+				this.parcel.surrogate.y = 300 - startr - 3
+				return false
+			}
+			this.parcel.move(1,-dr)
+		}
 		for (let i = 0; i < 3; i++) {
 			this.parcel.update()
 			super.update()
 		}
-		this.parcel.rise()
-		if (tick % 60 == 0) {
-			this.parcel.expand()
-		}
+		return true
 	}
 }
 
 class Buttons {
 	constructor(listener) {
-		this.run = document.getElementById("run")
+		this.float = document.getElementById("float")
+		this.sink = document.getElementById("sink")
 		this.reset = document.getElementById("reset")
-		this.run.addEventListener("click",() => listener.press("run"))
+		this.float.addEventListener("click",() => listener.press("float"))
+		this.sink.addEventListener("click",() => listener.press("sink"))
 		this.reset.addEventListener("click",() => listener.press("reset"))
 	}
 }
@@ -267,9 +281,9 @@ class BubbleSim {
 	}
 	
 	render() {
-		this.atmosphere = new Atmosphere(this.mainstage,-10,-10,420,410)
+		this.atmosphere = new Atmosphere(this.mainstage,0,0,300,300)
 		let ground = new createjs.Shape()
-		ground.graphics.beginStroke("#888").beginFill("#888").drawRect(0,398,398,2).endStroke()
+		ground.graphics.beginStroke("#888").beginFill("#888").drawRect(0,298,298,2).endStroke()
 		this.mainstage.addChild(ground)
 	}
 		
@@ -280,7 +294,7 @@ class BubbleSim {
 		createjs.Ticker.addEventListener("tick", e => {
 			this.mainstage.update()
 			if (!this.running) return
-			this.atmosphere.update(tick)
+			this.running = this.atmosphere.update(tick)
 			tick++
 		})
 	}
@@ -292,7 +306,15 @@ class BubbleSim {
 	}
 	
 	press(cmd) {
-		if (cmd == "run") { 
+		if (cmd == "float") { 
+			this.running = true
+			this.atmosphere.float = true
+		}
+		if (cmd == "sink") {
+			this.running = true
+			this.atmosphere.float = false
+		}
+		if (cmd == "false") { 
 			this.running = true
 		}
 		if (cmd == "reset") this.reset()

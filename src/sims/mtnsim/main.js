@@ -7,7 +7,8 @@ createjs.MotionGuidePlugin.install()
 createjs.Sound.registerPlugins([createjs.WebAudioPlugin, createjs.HTMLAudioPlugin, createjs.FlashAudioPlugin])
 createjs.Ticker.frameRate = 20
 
-function saturation(temp) { return 10.0 * 0.611 * Math.exp(17.27*temp/(temp+237.3)) }
+function saturation(temp) { return 10.0 * 0.611 * Math.exp(17.27*temp/(temp+273.16-35.86)) }
+function icesaturation(temp) { return 10.0 * 0.611 * Math.exp(21.87*temp/(temp+273.16-7.66)) }
 function humidity(temp, vapor) { return 100.0 * vapor/saturation(temp)}
 function dewpoint(temp,vapor) { return temp - ((100.0-humidity(temp,vapor))/5.0) }
 
@@ -119,7 +120,7 @@ class Settings {
 		this.vapor.value = value
 		this.vaporout.value = value.toFixed(1)
 	}
-	
+ 	
 	addListener(listener) { this.listener = listener }
 }
 
@@ -173,6 +174,7 @@ class ETGraph extends Graph {
                 this.vapor = slider.valueAsNumber
             this.moveMarker(true)
 		})
+		this.icegraph = new IceGraph(stage)
 	}
 	
 	render() {
@@ -180,11 +182,12 @@ class ETGraph extends Graph {
 		this.vapor = this.settings.getVapor()
 		super.render()
 		this.plotSaturation()
+		this.icegraph.render()
 		this.moveMarker(true)
 	}
 	
 	plotSaturation() {
-        for (let t = this.xaxis.min; t <= this.xaxis.max; t++) this.plot(t,Math.round(saturation(t)))
+        for (let t = this.xaxis.min; t <= this.xaxis.max; t++) this.plot(t,saturation(t))
         this.endPlot()
 	}
 	
@@ -228,7 +231,7 @@ class ETGraph extends Graph {
 		this.showLeaf()
 	}
 }
-
+ 
 class ATGraph extends Graph {
 	constructor(stage) {
 		super({
@@ -256,6 +259,46 @@ class ATGraph extends Graph {
 	update(trial) {
 		this.plot(trial.temp,trial.altitude)
 	}
+}
+    
+class IceGraph extends Graph {
+	constructor(stage) {
+		super({
+			stage: stage,
+			x: 60,
+			y: 110,
+			w: 75,
+			h: 100,
+			xlabel: "C",
+			xscale: "linear",
+			yscale: "linear",
+			minX: -15,
+			maxX: 1,
+			minY: 1,
+			maxY: 5,
+			majorX: 5,
+			majorY: 1,
+			background: "#EEE"
+		})
+		let liquid = new createjs.Text("Liquid","10px Arial","#000")
+		liquid.x = 65
+		liquid.y = 40
+		stage.addChild(liquid)
+		let ice = new createjs.Text("Ice","10px Arial","#000")
+		ice.x = 90
+		ice.y = 70
+		stage.addChild(ice)
+	}
+	
+	render() {
+		super.render()
+		console.log("ice")
+        for (let t = this.xaxis.min; t <= this.xaxis.max; t++) this.plot(t,saturation(t))
+        this.endPlot()
+        for (let t = this.xaxis.min; t <= this.xaxis.max; t++) this.plot(t,icesaturation(t))
+        this.endPlot()
+	}
+	
 }
 
 class Mtn {
@@ -379,7 +422,7 @@ class Mtn {
 			}
 		}
 	}
- 	
+ 	 
 	update(trial) {
 		let oldA = trial.altitude, oldT = trial.temp
 		trial.altitude = (165 - this.leaf.y)/165 * 5
