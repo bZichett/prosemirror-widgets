@@ -1,7 +1,7 @@
 let Random = require("prosemirror/node_modules/random-js")
 createjs.MotionGuidePlugin.install()
 
-const initialSpeed = 3, framerate = 60, startr = 20, maxAtmos = 1500, maxParcel = 10, maxVelComp = 10, dr = 10/framerate
+const initialSpeed = 3, framerate = 60, startr = 20, maxAtmos = 1500, maxParcel =10, maxVelComp = 10, dr = 15/framerate
 
 let random = new Random(Random.engines.mt19937().autoSeed())
 
@@ -33,7 +33,7 @@ class Particle {
 	
 	move() { this.place(this.x+this.dx,this.y+this.dy) }
 
-	accelerate(factor = 3) {
+	accelerate(factor = 5) {
 		this.dx += random.real(-1,1)*factor
 		this.dy += random.real(-1,1)*factor
 		
@@ -141,7 +141,7 @@ class Container {
 
 class Parcel extends Container {
 	constructor(stage,x,y,r) {
-		super(stage, maxParcel, initialSpeed-2)
+		super(stage, maxParcel, initialSpeed+2)
 		this.float = true
 		this.surrogate = new Particle(this)
 		this.surrogate.place(x,y)
@@ -174,7 +174,7 @@ class Parcel extends Container {
 				
 		p.x += p.dx
 		p.y += p.dy
-		p.accelerate(this.float?.5:2)
+		p.accelerate(this.float?.3:1.2)
 		let x = p.x - this.surrogate.x, y = p.y - this.surrogate.y, r = this.surrogate.r
 		let radSquare= x*x + y*y
 		let boundaryRadSquare = r*r
