@@ -1,7 +1,7 @@
 let Random = require("prosemirror/node_modules/random-js")
 createjs.MotionGuidePlugin.install()
 
-const initialSpeed = 3, framerate = 60, startr = 20, maxAtmos = 1500, maxParcel = 10, maxVelComp = 4, randAccel = 0.4, dr = 10/framerate
+const initialSpeed = 3, framerate = 60, startr = 20, maxAtmos = 1500, maxParcel = 10, maxVelComp = 10, dr = 10/framerate
 
 let random = new Random(Random.engines.mt19937().autoSeed())
 
@@ -33,10 +33,9 @@ class Particle {
 	
 	move() { this.place(this.x+this.dx,this.y+this.dy) }
 
-	accelerate() {
-		//random accleration
-		this.dx += (1-2*Math.random())*randAccel
-		this.dy += (1-2*Math.random())*randAccel
+	accelerate(factor = 3) {
+		this.dx += random.real(-1,1)*factor
+		this.dy += random.real(-1,1)*factor
 		
 		//don't let velocity get too large
 		if (this.dx > maxVelComp) {
@@ -60,8 +59,8 @@ class Particle {
 	
 	bounce() { 
 		if (this.container.bounce(this)) {
-			this.collide(this.container)
 			this.accelerate()
+			this.collide(this.container)
 		}
 	}
 
@@ -143,6 +142,7 @@ class Container {
 class Parcel extends Container {
 	constructor(stage,x,y,r) {
 		super(stage, maxParcel, initialSpeed-2)
+		this.float = true
 		this.surrogate = new Particle(this)
 		this.surrogate.place(x,y)
 		this.surrogate.resize(r)
@@ -174,7 +174,7 @@ class Parcel extends Container {
 				
 		p.x += p.dx
 		p.y += p.dy
-		
+		p.accelerate(this.float?.5:2)
 		let x = p.x - this.surrogate.x, y = p.y - this.surrogate.y, r = this.surrogate.r
 		let radSquare= x*x + y*y
 		let boundaryRadSquare = r*r
@@ -194,8 +194,8 @@ class Parcel extends Container {
 		    let twiceProjFactor = 2*(exitX*p.dx + exitY*p.dy)/boundaryRadSquare
 		    p.dx -= twiceProjFactor*exitX
 		    p.dy -= twiceProjFactor*exitY
-		    if (!p.dx) p.dx = 0.1
-		    if (!p.dy) p.dy = 0.1
+		    p.dx *= .8
+		    p.dy *= .8
 		}
 	    return false
 	}
@@ -217,7 +217,6 @@ class Atmosphere extends Container {
 		this.w = w
 		this.h = h
 		this.r = 1
-		this.float = true
 		this.parcel = new Parcel(stage,w/2,h-startr-3,startr)
 		this.particles.push(this.parcel.surrogate)
 		this.parcel.populate()
@@ -239,7 +238,7 @@ class Atmosphere extends Container {
 	}
 	
 	update(tick) {
-		if (this.float) {
+		if (this.parcel.float) {
 			if (this.parcel.surrogate.y < this.parcel.surrogate.r) {
 				this.parcel.surrogate.y = this.parcel.surrogate.r+1
 				return false
@@ -253,7 +252,7 @@ class Atmosphere extends Container {
 			}
 			this.parcel.move(1,-dr)
 		}
-		for (let i = 0; i < 3; i++) {
+		for (let i = 0; i < 2; i++) {
 			this.parcel.update()
 			super.update()
 		}
@@ -308,11 +307,11 @@ class BubbleSim {
 	press(cmd) {
 		if (cmd == "float") { 
 			this.running = true
-			this.atmosphere.float = true
+			this.atmosphere.parcel.float = true
 		}
 		if (cmd == "sink") {
 			this.running = true
-			this.atmosphere.float = false
+			this.atmosphere.parcel.float = false
 		}
 		if (cmd == "false") { 
 			this.running = true
