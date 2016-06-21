@@ -169,12 +169,12 @@ class Parcel extends Container {
 	bounce(p) {
 		if (p.container != this) return this.contains(p)
 		if (this.contains(p)) return false
-		let lastX = p.x;
-		let lastY = p.y;
+		let lastX = p.x
+		let lastY = p.y
 				
 		p.x += p.dx
 		p.y += p.dy
-		p.accelerate(this.float?.3:1.2)
+		p.accelerate(this.float?.3:3)
 		let x = p.x - this.surrogate.x, y = p.y - this.surrogate.y, r = this.surrogate.r
 		let radSquare= x*x + y*y
 		let boundaryRadSquare = r*r
@@ -206,6 +206,10 @@ class Parcel extends Container {
 		let dy = Math.floor(Math.sqrt(r*r-px*px))
 		let py = randomBetween(-dy+2,dy-2)
 		p.place(x+px,y+py)
+	}
+	
+	repopulate() {
+		this.particles.forEach(p => this.place(p))
 	}
 }
 
@@ -312,6 +316,7 @@ class BubbleSim {
 		if (cmd == "sink") {
 			this.running = true
 			this.atmosphere.parcel.float = false
+			this.atmosphere.parcel.repopulate()
 		}
 		if (cmd == "false") { 
 			this.running = true
