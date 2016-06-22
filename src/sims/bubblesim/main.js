@@ -137,6 +137,10 @@ class Container {
         }
 		this.particles.forEach(p => { p.move(); p.bounce() })
 	}
+
+	repopulate() {
+		this.particles.forEach(p => this.place(p))
+	}
 }
 
 class Parcel extends Container {
@@ -207,10 +211,6 @@ class Parcel extends Container {
 		let py = randomBetween(-dy+2,dy-2)
 		p.place(x+px,y+py)
 	}
-	
-	repopulate() {
-		this.particles.forEach(p => this.place(p))
-	}
 }
 
 class Atmosphere extends Container {
@@ -237,6 +237,7 @@ class Atmosphere extends Container {
 	}
 	
 	place(p) {
+		if (p.container != this) return
 		p.place(randomBetween(this.x+1,this.x+this.w-1),randomBetween(this.y+1,this.y+this.h-1))
 		if (this.parcel.contains(p)) this.place(p)
 	}
@@ -317,6 +318,7 @@ class BubbleSim {
 			this.running = true
 			this.atmosphere.parcel.float = false
 			this.atmosphere.parcel.repopulate()
+			this.atmosphere.repopulate()
 		}
 		if (cmd == "false") { 
 			this.running = true
