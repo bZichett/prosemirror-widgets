@@ -1,7 +1,7 @@
 let Random = require("prosemirror/node_modules/random-js")
 createjs.MotionGuidePlugin.install()
 
-const initialSpeed = 3, framerate = 60, startr = 20, maxAtmos = 1500, maxParcel =10, maxVelComp = 10, dr = 15/framerate
+const initialSpeed = 5, framerate = 60, startr = 20, maxAtmos = 1500, maxParcel =10, maxVelComp = 20, dr = 10/framerate
 
 let random = new Random(Random.engines.mt19937().autoSeed())
 
@@ -18,10 +18,9 @@ class Particle {
 		this.y = 0
 	    this.r = 1
 	    this.mass = 1
-		this.dx = container.speed * (random.real(0,1) - 0.5) / this.r
-		this.dy = container.speed * (random.real(0,1) - 0.5) / this.r
 		this.dot = 	new createjs.Shape()
 		this.dot.graphics.beginStroke("#000").setStrokeStyle(1).beginFill("#EEE").drawCircle(0,0,this.r).endStroke()
+		this.setSpeed()
 	}
 
 	place(x,y) {
@@ -30,10 +29,15 @@ class Particle {
 		this.dot.x = x
 		this.dot.y = y
 	}
+
+	setSpeed() {
+		this.dx = this.container.speed * (random.real(0,1) - 0.5) / this.r
+		this.dy = this.container.speed * (random.real(0,1) - 0.5) / this.r
+	}
 	
 	move() { this.place(this.x+this.dx,this.y+this.dy) }
 
-	accelerate(factor = 5) {
+	accelerate(factor = 10) {
 		this.dx += random.real(-1,1)*factor
 		this.dy += random.real(-1,1)*factor
 		
@@ -98,7 +102,7 @@ class Particle {
         that.dy = v2p * collisionVj + perpV2 * collisionVi
         
         // Move to avoid overlap
-        let overlap = dr + 1 - collisionDist
+        let overlap = dr + 2 - collisionDist
         let p1 = overlap * that.mass / sumMass
         let p2 = overlap * this.mass / sumMass
         this.x += collisionVi * p1
@@ -145,12 +149,12 @@ class Container {
 
 class Parcel extends Container {
 	constructor(stage,x,y,r) {
-		super(stage, maxParcel, initialSpeed+2)
+		super(stage, maxParcel, initialSpeed)
 		this.float = true
 		this.surrogate = new Particle(this)
 		this.surrogate.place(x,y)
 		this.surrogate.resize(r)
-		this.surrogate.mass = 1000000
+		this.surrogate.mass = 10000
 		this.surrogate.dx = 0
 		this.surrogate.dy = 0
 		stage.addChild(this.surrogate.dot)
@@ -257,11 +261,17 @@ class Atmosphere extends Container {
 			}
 			this.parcel.move(1,-dr)
 		}
-		for (let i = 0; i < 2; i++) {
+		for (let i = 0; i < 3; i++) {
 			this.parcel.update()
 			super.update()
 		}
 		return true
+	}
+	
+	repopulate() {
+		this.parcel.repopulate()
+		super.repopulate()
+		this.particles.forEach(p => {if (p.container == this) p.setSpeed()})
 	}
 }
 
@@ -317,7 +327,6 @@ class BubbleSim {
 		if (cmd == "sink") {
 			this.running = true
 			this.atmosphere.parcel.float = false
-			this.atmosphere.parcel.repopulate()
 			this.atmosphere.repopulate()
 		}
 		if (cmd == "false") { 
