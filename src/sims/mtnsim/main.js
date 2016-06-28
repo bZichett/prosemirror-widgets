@@ -187,7 +187,8 @@ class ETGraph extends Graph {
 	}
 	
 	plotSaturation() {
-        for (let t = this.xaxis.min; t <= this.xaxis.max; t++) this.plot(t,saturation(t))
+        for (let t = this.xaxis.min; t < 0; t++) this.plot(t,icesaturation(t))
+        for (let t = 0; t < this.xaxis.max; t++) this.plot(t,saturation(t))
         this.endPlot()
 	}
 	
