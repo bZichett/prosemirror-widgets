@@ -261,7 +261,7 @@ class Rad {
 		this.plotProfiles()
 	}
 	
-	plotProfiles() {
+	plotProfiles() { 
 		this.atgraph.clear()
 		this.atgraph.render()
 		surface_times.forEach(st => {

@@ -68,9 +68,9 @@ export class Graph {
 	drawLine(x1,y1,x2,y2) {
 		let line = new createjs.Shape()
 		if (this.dotted === true)
-			line.graphics.setStrokeDash([1,4]).setStrokeStyle(1).beginStroke(this.color).moveTo(x1, y1).lineTo(x2, y2).endStroke()
+			line.graphics.setStrokeDash([1,4]).setStrokeStyle(2).beginStroke(this.color).moveTo(x1, y1).lineTo(x2, y2).endStroke()
 		else
-			line.graphics.setStrokeStyle(1).beginStroke(this.color).moveTo(x1, y1).lineTo(x2, y2).endStroke()
+			line.graphics.setStrokeStyle(2).beginStroke(this.color).moveTo(x1, y1).lineTo(x2, y2).endStroke()
 		this.stage.addChild(line)
 	}
 	

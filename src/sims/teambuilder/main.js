@@ -1,8 +1,6 @@
-createjs.MotionGuidePlugin.install()
-createjs.Sound.registerPlugins([createjs.WebAudioPlugin, createjs.HTMLAudioPlugin, createjs.FlashAudioPlugin])
-createjs.Ticker.framerate = 10
+
 /*
- * Given a list of students each which has one or more catsize categories, assign them to teams so that each
+ * Given a list of students each which have one or more catsize categories, assign to teams so that each
  * team has one or more representatives from each category.
  * 
  * The algorithm begins by creating an array of category_team indices. Each category team index represents the next team that
@@ -32,6 +30,8 @@ class Team {
 	
 	isFull() { return this.students.length == this.teamsize }
 	
+	canAdd(c) { return this.catcnt[c] == 0 && !isFull() }
+	
 	addStudent(s) { 
 		this.students.concat(s)
 		for (let c = 0; c < s.categories.length; c++)
@@ -56,32 +56,43 @@ class Team {
 }
 
 class TeamBuilder {
-	constructor(students,catsize,teamsize) {
-		this.students = students
-		this.catsize = catsize
-		this.teamsize = teamsize
-		this.nteams = students.length/teamsize + 1
+	constructor(settings) {
+		this.settings = settings
+		this.render()
+	}
+	
+	render() {
+		this.getStudents()
+		this.catsize = this.settings.getCategories()
+		this.teamsize = this.settings.getTeams()
+		this.nteams = this.students.length/this.teamsize + 1
 		this.teams = []
-		for (let t = 0; t < nteams; t++) this.teams.concat(new Team(t,catsize,teamsize))
+		for (let t = 0; t < this.nteams; t++) this.teams.concat(new Team(t,this.catsize,this.teamsize))
 		this.category_team = []
-		for (let c = 0; c < catsize; c++) this.category_team.concat(0)
+		for (let c = 0; c < this.catsize; c++) this.category_team.concat(0)
+	}
+	
+	getStudents() {
+		this.students = []
+    	for (let s = 0; s < this.settings.getStudents(); s++) {
+    		this.students.concat(new Student("s"+s,[]))
+    	}
 	}
 	
 	populate() {
-		for (let s = 0; s < students.length; s++) {
-			let student = students[s]
+		for (let s = 0; s < this.students.length; s++) {
+			let student = this.students[s]
 			let team = -1
 			for (let i = 0; i < student.categories.length; i++) {
 				let c = student.categories[i]
-				while (this.teams[this.category_team[c] % this.catsize].isFull()) this.category_team[c]++
-				team = this.category_team[c]++
-				// Add student if the non-full team doesn't have the category otherwise move to next category
-				if (this.teams[team].catcnt[c] == 0) {
-					this.teams[team].addStudent(s)
-					break
-				}
+				for (let t = this.category_team[c]; t < this.nteams; t++)
+					if (this.teams[t].canAdd(c)) {
+						team = t
+						this.teams[team].addStudent(s)
+						break
+					}
 			}
-			// all teams have at least one member in each category of this student so add student to first non-full team
+			// all teams have at least one member in each category of this student then add student to first non-full team
 			if (team >= 0) continue
 			for (let t = 0;t < this.nteams; t++)
 				if (!this.teams[t].isFull()) {
@@ -94,13 +105,59 @@ class TeamBuilder {
 	getTeams() { return this.teams }	
 }
 
-function assign() {
-	let students = []
-	for (let s = 0; s < 100; s++) {
-		let domains = []
-		students.concat(new Student("s"+s,domains))
+class Settings {
+	constructor() {
+		this.size = document.getElementById("size")
+		this.team = document.getElementById("team")
+		this.category = document.getElementById("category")
+		this.category.addEventListener("change", e => {
+			this.buildInputTable()
+		})
 	}
-	let builder = new TeamBuilder(students,6)
+	
+	getStudents() { return parseInt(this.size.value) }
+	
+	getTeams() { return parseInt(this.team.value) }
+
+	getCategories() { return parseInt(this.category.value) }
+	
+	getInput(id,sz) {
+		let input = document.createElement("input")
+		input.setAttribute("id",id)
+		input.setAttribute("size",sz)
+		input.setAttribute("type","text")
+		return input
+	}
+ 		
+	buildInputTable() {
+		let table = document.getElementById("cattable1")
+		let nrows = this.getCategories()+1
+		if (table.rows.length < nrows)
+			for (let i = table.rows.length; i < nrows; i++) {
+				let row = table.insertRow(i)
+				row.insertCell(0).appendChild(this.getInput("c"+i,20))
+				row.insertCell(1).appendChild(this.getInput("s"+i,3))
+			}
+		else if (table.rows.length > nrows)
+			for (let i = table.rows.length-1; i >= nrows; i--)
+				table.deleteRow(i)
+	}
+}
+
+class Buttons {
+	constructor() {
+		this.assign = document.getElementById("assign")
+	}
+	
+	addListener(listener) { 
+		this.assign.addEventListener("click", e => listener(e))
+	}
+}
+
+let tb = new TeamBuilder(new Settings())
+
+function assign() {
+	let builder = new TeamBuilder(new Settings())
 	builder.assign()
-	builder.getTeams().forEach(t -> console.log(t.toString()))
+	builder.getTeams().forEach(t => console.log(t.toString()))
 }

@@ -293,7 +293,6 @@ class IceGraph extends Graph {
 	
 	render() {
 		super.render()
-		console.log("ice")
         for (let t = this.xaxis.min; t <= this.xaxis.max; t++) this.plot(t,saturation(t))
         this.endPlot()
         for (let t = this.xaxis.min; t <= this.xaxis.max; t++) this.plot(t,icesaturation(t))
