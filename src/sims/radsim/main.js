@@ -155,7 +155,7 @@ class Rad {
 		]
 		this.lastImage = this.images[0]
 		this.surfaces = ["sand","plowed","grass","snow"]
-		this.colors = {sand:"#8A4117",plowed: "#A52A2A", grass: "#667C26", snow: "#0000FF"}
+		this.colors = {sand:"#8A4117",plowed: /*"#A52A2A"*/"#000", grass: "#667C26", snow: "#0000FF"}
 		this.plotted = {
 			"sand-day":[],"sand-night":[],"plowed-day": [], "plowed-night":[],
 			"grass-day":[],"grass-night":[],"snow-day": [], "snow-night":[]
@@ -267,7 +267,7 @@ class Rad {
 		surface_times.forEach(st => {
 			let v = st.split("-")
 			this.atgraph.setColor(this.colors[v[0]])
-			this.atgraph.setDotted(v[1] == "night")
+			this.atgraph.setWidth(v[1] == "night"? 1: 2)
 			let alts = this.data.altitude
 			let temps = this.data[st]
 			for(let i = 0; i < points; i++) {

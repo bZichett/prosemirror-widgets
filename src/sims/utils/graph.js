@@ -22,6 +22,7 @@ export class Graph {
 			minor: spec.minorY,
 			precision: spec.precisionY
 		})
+		this.width = 1
 		this.last = null
 		this.marker = null
 		this.color = "#000"
@@ -32,6 +33,10 @@ export class Graph {
 			b.alpha = 0.3
 			spec.stage.addChild(b)
 		}
+	}
+	
+	setWidth(width) {
+		this.width = width
 	}
 	
 	setDotted(dotted) {
@@ -68,9 +73,9 @@ export class Graph {
 	drawLine(x1,y1,x2,y2) {
 		let line = new createjs.Shape()
 		if (this.dotted === true)
-			line.graphics.setStrokeDash([1,4]).setStrokeStyle(2).beginStroke(this.color).moveTo(x1, y1).lineTo(x2, y2).endStroke()
+			line.graphics.setStrokeDash([2,2]).setStrokeStyle(this.width).beginStroke(this.color).moveTo(x1, y1).lineTo(x2, y2).endStroke()
 		else
-			line.graphics.setStrokeStyle(2).beginStroke(this.color).moveTo(x1, y1).lineTo(x2, y2).endStroke()
+			line.graphics.setStrokeStyle(this.width).beginStroke(this.color).moveTo(x1, y1).lineTo(x2, y2).endStroke()
 		this.stage.addChild(line)
 	}
 	

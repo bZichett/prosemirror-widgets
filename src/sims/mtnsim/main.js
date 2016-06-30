@@ -30,7 +30,7 @@ function getDelete(row) {
 		if (confirm("Delete row?")) {
 			// <tr><td><img...
 			let node = event.target.parentNode.parentNode
-			mtnsim.mtn.deleteTrial(Array.prototype.indexOf.call(node.parentNode.childNodes,node))
+			mtnsim.mtn.deleteTrial(Array.prototype.indexOf.call(node.parentNode.childNodes,node)-4)
 		}
 	})
 	td.appendChild(img)
@@ -393,7 +393,7 @@ class Mtn {
 	
 	deleteTrial(row) {
 		let trials = store.get(mtnsim_results)
-		trials = trials.splice(row,1)
+		trials.splice(row,1)
 		store.set(mtnsim_results,trials)
 		this.showResults()
 	}
