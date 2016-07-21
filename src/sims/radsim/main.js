@@ -111,7 +111,7 @@ class ATGraph extends Graph {
 			w: 300,
 			h: 300,
 			xlabel: "Temperature(C)",
-			ylabel: "Z(m)",
+			ylabel: "Height (m)",
 			xscale: "linear",
 			yscale: "linear",
 			minX: -8,
@@ -139,6 +139,20 @@ class ATGraph extends Graph {
             let y = this.yaxis.getLoc(z)
 			this.drawLine(x,y,this.xaxis.getLoc(12),y)
 		}
+		let day = new createjs.Text("Day","9px Arial","#000")
+		day.x = 10
+		day.y = 285
+		let dayline = new createjs.Shape()
+		dayline.graphics.setStrokeStyle(3).beginStroke("#000").moveTo(35,290).lineTo(50,290).endStroke()
+		let night = new createjs.Text("Night","9px Arial","#000")
+		night.x = 70
+		night.y = 285
+		let nightline = new createjs.Shape()
+		nightline.graphics.setStrokeStyle(1).beginStroke("#000").moveTo(100,290).lineTo(115,290).endStroke()
+		this.stage.addChild(day)
+		this.stage.addChild(dayline)
+		this.stage.addChild(night)
+		this.stage.addChild(nightline)
 	}
 }
 
@@ -251,8 +265,8 @@ class Rad {
 
 	getAltIndex() {
 		let alt = 1500.0 * (balloon_y-this.balloon.y)/balloon_y
-		let i = 0
-		while(alt > this.data.altitude[i]) i++
+		let i = points - 1
+		while(this.data.altitude[i] > alt) i--
 		return i
 	}
 	
@@ -267,7 +281,7 @@ class Rad {
 		surface_times.forEach(st => {
 			let v = st.split("-")
 			this.atgraph.setColor(this.colors[v[0]])
-			this.atgraph.setWidth(v[1] == "night"? 1: 2)
+			this.atgraph.setWidth(v[1] == "night"? 1: 3)
 			let alts = this.data.altitude
 			let temps = this.data[st]
 			for(let i = 0; i < points; i++) {
