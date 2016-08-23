@@ -41,6 +41,13 @@ function removeSymbol(symbol) {
 				return
 			}
 			break
+		case "region":
+			if (PressureRegion.isSame(symbol,symbols[i])) {
+				symbols.splice(i,1)
+				store.set(image,symbols)
+				return
+			}
+			break
 		case "airmass":
 			if (Airmass.isSame(symbol,symbols[i])) {
 				symbols.splice(i,1)
@@ -106,15 +113,9 @@ class Vector extends createjs.Container {
     	this.setBounds(x,0,26,26)
     	this.addChild(map)
 		select.alpha = 0
-		this.addEventListener("mouseover", e => {
-			select.alpha = 0.5
-		})
-		this.addEventListener("mouseout", e => {
-			select.alpha = 0
-		})
-		this.addEventListener("click", e => {
-			drawsim.toolbar.select(this)
-		})
+		this.addEventListener("mouseover", e => select.alpha = 0.5)
+		this.addEventListener("mouseout", e => select.alpha = 0)
+		this.addEventListener("click", e => drawsim.toolbar.select(this))
 	}
 	
 	toJSON(x,y) {
@@ -122,7 +123,58 @@ class Vector extends createjs.Container {
 	}		
 }
 
-class Vectors extends createjs.Container {
+class PressureRegion extends createjs.Container {
+	static showSymbol(stage,json) {
+		let region = new createjs.Container()
+		let txt = new createjs.Text(json.high?"H":"L","bold 24px Arial",json.high?"#00F":"#F00")
+		txt.x = json.pt.x - 12
+		txt.y = json.pt.y - 12
+		let circle = new createjs.Shape()
+		circle.graphics.beginFill(json.high?"#0F0":"#FF0").drawCircle(json.pt.x,json.pt.y,24).endFill()
+		circle.alpha = 0.5
+		region.addChild(circle)
+		region.addChild(txt)
+		region.addEventListener("click", e => {
+			removeSymbol(json)
+			region.stage.removeChild(region)
+		})
+		stage.addChild(region)
+	}
+	
+	static isSame(json1,json2) {
+		if (json1.type != json2.type) return false
+		if (json1.high != json2.high) return false
+		if (json1.pt.x != json2.pt.x) return false
+		if (json1.pt.y != json2.pt.y) return false
+		return true
+	}
+	
+	constructor(x,high,drawsim) {
+		super()
+		this.high = high
+		let txt = new createjs.Text(high?"H":"L","bold 24px Arial",high?"#00F":"#F00")
+		txt.x = x + 2
+		txt.y = 2
+		let select = new createjs.Shape()
+		select.graphics.beginFill("#CCC").drawRoundRect(x,0,26,26,2,2,2,2).endStroke()
+		this.addChild(select)
+		let circle = new createjs.Shape()
+		circle.graphics.beginFill(high?"#0F0":"#FF0").drawCircle(x+12,12,13).endFill()
+		circle.alpha = 0.3
+		this.addChild(circle,txt)
+    	this.setBounds(x,0,26,26)
+		select.alpha = 0
+		this.addEventListener("mouseover", e => select.alpha = 0.5)
+		this.addEventListener("mouseout", e => select.alpha = 0)
+		this.addEventListener("click", e => drawsim.toolbar.select(this))
+	}
+
+	toJSON(x,y) {
+		return {type:"region", high: this.high, pt:{x:x,y:y}}
+	}		
+}
+
+class Pressures extends createjs.Container {
 	constructor(x,drawsim) {
 		super()
 		this.x = x
@@ -132,12 +184,16 @@ class Vectors extends createjs.Container {
 			this.addChild(v)
 			x += 30
 		}
+		this.addChild(new PressureRegion(x,true,drawsim))
+		x += 30
+		this.addChild(new PressureRegion(x,false,drawsim))
+		x += 30
 	}
 	
-	getLength() { return 8*30+2 }
+	getLength() { return 10*30+2 }
 
 	getInst() {
-		return "<p>Click location and select vector to add. Click vector to delete.</p>"
+		return "<p>Click location and select a vector or region to add. Click vector or region to delete.</p>"
 	}
 }
 
@@ -262,8 +318,7 @@ class IsoPath {
 		txt.x = x
 		txt.y = y
 		let circle = new createjs.Shape()
-		circle.graphics.beginFill("#FFF").beginStroke("#00F").drawCircle(x + 12,y + 12,20).endFill()
-		circle.alpha = 0.5
+		circle.graphics.beginFill("#FFF").drawCircle(x + 12,y + 12,20).endFill()
 		label.addChild(circle)
 		label.addChild(txt)
 		return label
@@ -351,6 +406,10 @@ class Toolbar extends createjs.Container {
 			json = obj.toJSON(this.e.stageX-14,this.e.stageY-14)
 			Airmass.showSymbol(this.stage,json)
 		}
+		if (obj instanceof PressureRegion) {
+			json = obj.toJSON(this.e.stageX,this.e.stageY)
+			PressureRegion.showSymbol(this.stage,json)
+		}
 		addSymbol(json)
 		this.stage.setChildIndex( this, this.stage.getNumChildren()-1)
 	}
@@ -382,10 +441,10 @@ class DrawSim {
 			this.mainstage.enableMouseOver()
 			let inst = document.getElementById("instruct")
 			switch (tool) {
-			case "vector":
-				let vectors = new Vectors(2,this)
-				this.toolbar = new Toolbar(vectors,this)
-				inst.innerHTML = vectors.getInst()
+			case "pressure":
+				let pressures = new Pressures(2,this)
+				this.toolbar = new Toolbar(pressures,this)
+				inst.innerHTML = pressures.getInst()
 				back.addEventListener("mousedown", e => this.toolbar.show(e))
 				this.mainstage.addChild(this.toolbar)
 				break
@@ -402,6 +461,16 @@ class DrawSim {
 				break
 			}
 		}
+		// handle download
+		let dl = document.getElementById("download")
+		dl.addEventListener("click", e => {
+			let dt = this.mainstage.canvas.toDataURL('image/png')
+			/* Change MIME type to trick the browser to downlaod the file instead of displaying it */
+			dt = dt.replace(/^data:image\/[^;]*/, 'data:application/octet-stream');
+			/* In addition to <a>'s "download" attribute, you can define HTTP-style headers */
+			dt = dt.replace(/^data:application\/octet-stream/, 'data:application/octet-stream;headers=Content-Disposition%3A%20attachment%3B%20filename=map.png');
+			dl.href = dt;
+		})
 	}
 	
 	showSymbols() {
@@ -410,6 +479,9 @@ class DrawSim {
 			switch (json.type) {
 			case "vector":
 				Vector.showSymbol(this.mainstage,json)
+				break
+			case "region":
+				PressureRegion.showSymbol(this.mainstage,json)
 				break
 			case "airmass":
 				Airmass.showSymbol(this.mainstage,json)
