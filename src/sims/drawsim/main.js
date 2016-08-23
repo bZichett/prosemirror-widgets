@@ -135,9 +135,32 @@ class Vectors extends createjs.Container {
 	}
 	
 	getLength() { return 8*30+2 }
+
+	getInst() {
+		return "<p>Click location and select vector to add. Click vector to delete.</p>"
+	}
 }
 
 class Airmass extends createjs.Container {
+	static showSymbol(stage,json) {
+		let airmass = new createjs.Container()
+		airmass.x = json.pt.x
+		airmass.y = json.pt.y
+		let circle = new createjs.Shape()
+		circle.graphics.beginFill("#FFF").beginStroke("#000").drawCircle(14,14,14).endStroke()
+		airmass.addChild(circle)
+		let txt = new createjs.Text(json.name,"12px Arial","#000")
+		txt.x = 6
+		txt.y = 10
+		airmass.addChild(txt)
+    	airmass.cursor = "not-allowed"
+			airmass.addEventListener("click", e => {
+			removeSymbol(json)
+			airmass.stage.removeChild(airmass)
+		})
+    	stage.addChild(airmass)
+	}
+	
 	static isSame(json1,json2) {
 		if (json1.type != json2.type) return false
 		if (json1.name != json2.name) return false
@@ -173,29 +196,9 @@ class Airmass extends createjs.Container {
 		})
 	}
 	
-	static showSymbol(stage,json) {
-		let airmass = new createjs.Container()
-		airmass.x = json.pt.x
-		airmass.y = json.pt.y
-		let circle = new createjs.Shape()
-		circle.graphics.beginFill("#FFF").beginStroke("#000").drawCircle(14,14,14).endStroke()
-		airmass.addChild(circle)
-		let txt = new createjs.Text(json.name,"12px Arial","#000")
-		txt.x = 6
-		txt.y = 10
-		airmass.addChild(txt)
-    	airmass.cursor = "not-allowed"
-			airmass.addEventListener("click", e => {
-			removeSymbol(json)
-			airmass.stage.removeChild(airmass)
-		})
-    	stage.addChild(airmass)
-	}
-	
 	toJSON(x,y) {
 		return {type:"airmass", name: this.name, pt:{x:x,y:y}}
 	}		
-
 }
 
 class Airmasses extends createjs.Container {
@@ -209,7 +212,10 @@ class Airmasses extends createjs.Container {
 	}
 	
 	getLength() { return 8*30+2 }
-	
+
+	getInst() {
+		return "<p>Click location and select airmass to add. Click airmass to delete.</p>"
+	}
 }
 
 class IsoPath {
@@ -310,7 +316,7 @@ class IsoPath {
 	}
 	
 	getInst() {
-		return "<p>Click and drag to draw line. Supply value when prompted.  Click on value to delete.</p>"
+		return "<p>Click and drag to draw line. Supply value when prompted.  Click value to delete.</p>"
 	}
 }
 
@@ -356,10 +362,6 @@ class Toolbar extends createjs.Container {
 			this.e = e
 		}
 	}
-	
-	getInst() {
-		return "<p>Click location and select symbol to add. Click on symbol to delete.</p>"
-	}
 }
 
 class DrawSim {
@@ -380,19 +382,21 @@ class DrawSim {
 			this.mainstage.enableMouseOver()
 			let inst = document.getElementById("instruct")
 			switch (tool) {
-			case "vectors":
-				this.toolbar = new Toolbar(new Vectors(2,this),this)
-				inst.innerHTML = this.toolbar.getInst()
+			case "vector":
+				let vectors = new Vectors(2,this)
+				this.toolbar = new Toolbar(vectors,this)
+				inst.innerHTML = vectors.getInst()
 				back.addEventListener("mousedown", e => this.toolbar.show(e))
 				this.mainstage.addChild(this.toolbar)
 				break
-			case "airmasses":
-				this.toolbar = new Toolbar(new Airmasses(2,this),this)
-				inst.innerHTML = this.toolbar.getInst()
+			case "airmass":
+				let airmasses = new Airmasses(2,this)
+				this.toolbar = new Toolbar(airmasses,this)
+				inst.innerHTML = airmasses.getInst()
 				back.addEventListener("mousedown", e => this.toolbar.show(e))
 				this.mainstage.addChild(this.toolbar)
 				break
-			case "isopaths":
+			case "isopath":
 				this.isopath = new IsoPath(back,this)
 				inst.innerHTML = this.isopath.getInst()
 				break
