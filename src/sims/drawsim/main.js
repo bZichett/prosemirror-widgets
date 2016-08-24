@@ -3,7 +3,8 @@ import {Url} from "url"
 
 let store = getStore(), searchParams = new URLSearchParams(window.location.search.substring(1))
 
-let image = searchParams.get('img') || null
+let image = searchParams.get('img')
+if (!image) image = prompt("Enter image url:","")
 let edit = searchParams.get('mode') == "edit"
 let scale = searchParams.get('scale') || 1.0
 let tool = searchParams.get('tool') || "vectors"
@@ -138,6 +139,7 @@ class PressureRegion extends createjs.Container {
 			removeSymbol(json)
 			region.stage.removeChild(region)
 		})
+    	region.cursor = "not-allowed"
 		stage.addChild(region)
 	}
 	
@@ -391,7 +393,7 @@ class Toolbar extends createjs.Container {
 		this.x = 0
 		this.y = -100
 		this.w = w
-		border.graphics.beginFill("#FFF").drawRoundRect(0,0,w,30,5,5,5,5).endStroke()
+		border.graphics.beginFill("#FFF").beginStroke("#AAA").drawRoundRect(0,0,w,30,5,5,5,5).endStroke()
 	}
 	
 	select(obj) {
@@ -428,8 +430,8 @@ class DrawSim {
 		this.mainstage = new createjs.Stage("maincanvas")
 		createjs.Touch.enable(this.mainstage)
 		let back = new createjs.Bitmap(image)
-		back.x = 20
-		back.y = 20
+		back.x = 40
+		back.y = 40
 		this.mainstage.addChild(back)
 		back.onload = function() {
 			let bnd = back.getBounds()
