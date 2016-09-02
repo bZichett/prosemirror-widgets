@@ -142,8 +142,8 @@ class Cities {
 	
 	updateDir(dir) {
 		let radians = toRadians(dir)
-		let dx = Math.floor(10*Math.cos(radians))
-		let dy = Math.floor(10*Math.sin(radians))
+		let dx = Math.floor(20*Math.cos(radians))
+		let dy = Math.floor(20*Math.sin(radians))
 		for (let i = 0; i < city.length; i++) {
 			let c = city[i], w = this.winds[i]
 			let x = Math.floor(c.x+dx)
@@ -176,7 +176,7 @@ class Contours {
 	
 	render(spacing) {
 		spacing = spacing/4 // convert to pixel height
-		let y = spacing/2+50
+		let y = spacing/2 + 50
 		for (let i = 0; i < ncontour; i++) {
 			let c = new createjs.Shape()
 			c.graphics.setStrokeStyle(spacing).beginStroke(contour[i].color).mt(-100,y).lt(800,y).endStroke()
@@ -186,11 +186,13 @@ class Contours {
 	}
 	
 	getDegrees(x,y) {
+		x -= this.contours.x
+		y -= this.contours.y
 		for (let i = 0; i < ncontour; i++) {
 			let c = this.contours.getChildAt(i)
 			if (c.hitTest(x,y)) return contour[i].degree
 		}
-		return contour[0].degree
+		return contour[ncontour-1].degree
 	}
 	
 	updateSpacing(spacing) {
@@ -259,6 +261,7 @@ class USMap {
 	update() {
 		if (this.time < this.settings.getDuration()) {
 			this.contours.move(this.dx,this.dy)
+			this.cities.updateTemps()
 			this.time++
 		} else if (this.finish) 
 			this.finish()
@@ -332,7 +335,7 @@ class AdvectionSim {
 		this.buttons.run.disabled = false
 		this.buttons.pause.disabled = true
 		this.buttons.reset.disabled = false
-		createjs.Ticker.framerate = 1
+		createjs.Ticker.framerate = 2
 		let tick = 0
 		createjs.Ticker.addEventListener("tick", e => {
 			if (this.running) this.usmap.update()
