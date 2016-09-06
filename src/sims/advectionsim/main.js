@@ -237,6 +237,7 @@ class USMap {
 	
 	reset() {
 		this.contours.reset()
+		this.cities.updateTemps()
 		this.time = 0
 	}
 	
