@@ -536,8 +536,6 @@ class MtnSim {
 		
 	reset() {
 		this.enablePlay(true)
-		this.settings.setTemp(20.0)
-		this.settings.setVapor(7.0)
 	}
 	
 	enablePlay(play) {
