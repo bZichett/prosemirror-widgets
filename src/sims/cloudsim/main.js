@@ -8,8 +8,9 @@ let store = getStore(), CLOUDS = "clouds"
 let init_clouds = [
 	"altocumulus","altostratus","cirrocumulus","cirrostratus","cumulus",
 	"stratocumulus","stratus","cirrus","nimbostratus","nimbostratus",
-	"cumulonimbus","cumulonimbus","cumulonimbus",null,null
+	"cumulonimbus","cumulonimbus","cumulonimbus","blank","blank"
 ]
+let cloud_images = []
 let forms = ["streaks","sheets","heaps","rain"]
 
 function getClouds() {
@@ -22,7 +23,6 @@ function getClouds() {
 }
 
 function replaceClouds(clouds) {
-	let clouds = getSymbols()
 	store.set(CLOUDS,clouds)
 }
 
@@ -31,23 +31,51 @@ function removeClouds() {
 }
 
 class Cloud {
-	constructor(prefix,x,y) {
+	constructor(stage,name,x,y) {
 		this.bitmap = new createjs.Bitmap("assets/"+name+".png")
+		this.bitmap.x = x
+		this.bitmap.y = y
+		this.bitmap.scaleX = 0.5
+		this.bitmap.scaleY = 0.5
 		this.bitmap.image.alt = name
+		this.bitmap.cursor = "pointer"
+		this.bitmap.on("pressmove", e => {
+		    e.target.x = e.stageX
+		    e.target.y = e.stageY
+		    e.target.cursor = "grabbing"
+		    stage.setChildIndex( this.bitmap, stage.getNumChildren()-1)
+		});
+		this.bitmap.on("pressup", e => {
+		    e.target.cursor = "pointer"
+		})
 	}
 }
 
 class Grid {
 	constructor(stage,xorg,yorg) {
-		for (let y = yorg; y <= 800+yorg; y += 200) {
+		for (let y = yorg; y <= yorg+306; y += 102) {
 			let horz = new createjs.Shape()
-			horz.graphics.beginStroke().moveTo(xorg,y).lineTo(xorg+1000,y).endStroke()
-			for (let x = xorg; x <= xorg+1000; x += 200) {
+			horz.graphics.beginStroke("#000").moveTo(xorg,y).lineTo(xorg+510,y).endStroke()
+			stage.addChild(horz)
+			for (let x = xorg; x <= xorg+510; x += 102) {
 				let vert = new createjs.Shape()
-				vert.graphics.beginStroke().moveTo(x,yorg).lineTo(x,yorg+800).endStroke()
+				vert.graphics.beginStroke("#000").moveTo(x,yorg).lineTo(x,yorg+306).endStroke()
+				stage.addChild(vert)
 			}
 		}
 		// show labels
+		// show clouds
+		let x = xorg + 1
+		let y = yorg + 1
+		init_clouds.forEach(name => {
+			let cloud = new Cloud(stage,name,x,y)
+			stage.addChild(cloud.bitmap)
+			x+= 102
+			if (x > (xorg+510)) {
+				x = xorg + 1
+				y += 102
+			}
+		})
 	}
 }
 
@@ -55,7 +83,8 @@ class CloudSim {
 	constructor() {
 		this.mainstage = new createjs.Stage("maincanvas")
 		createjs.Touch.enable(this.mainstage)
-		this.grid = new Grid()
+		this.mainstage.enableMouseOver()
+		this.grid = new Grid(this.mainstage,50,50)
 		// handle download
 		let dl = document.getElementById("download")
 		dl.addEventListener("click", e => {
@@ -77,5 +106,4 @@ class CloudSim {
 	}
 }
 
-let cloudsim = new CloudSim()
-cloudsim.run()
+(new CloudSim()).run()
