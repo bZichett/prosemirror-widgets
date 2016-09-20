@@ -123,7 +123,10 @@ class Grid {
 			fx += 100
 			stage.addChild(form)
 		})
-		// show clouds
+		this.showClouds(stage,xorg,yorg)
+	}
+	
+	showClouds(stage,xorg,yorg) {
 		let x = xorg + 1
 		let y = yorg + 1
 		getClouds().forEach(name => {
@@ -147,8 +150,13 @@ class CloudSim {
 		this.grid = new Grid(this.mainstage,50,50)
 		let inst = document.getElementById("instruct")
 		inst.innerHTML = "Rearrange the clouds by dragging and dropping to the correct level and form.<br/>" +
-			"Clouds with multiple copies should be dropped in a rain column at the correct levels."
-		// handle download
+			"Clouds with multiple copies should be placed in a rain column at the correct levels."
+		let reset = document.getElementById("reset")
+		reset.addEventListener("click", e => {
+			removeClouds()
+			clouds.forEach(c => this.mainstage.removeChild(c))
+			this.grid.showClouds(this.mainstage,50,50)
+		})
 		let dl = document.getElementById("download")
 		dl.addEventListener("click", e => {
 			let dt = this.mainstage.canvas.toDataURL('image/png')
