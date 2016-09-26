@@ -8,14 +8,14 @@ let tool = searchParams.get('tool') || "grid"
 
 let store = getStore()
 let init_grid_clouds = [
-	"altocumulus","cumulonimbus","cirrocumulus","nimbostratus","cumulus",
-	"cumulonimbus","stratus","nimbostratus","cirrus","cirrostratus",
-	"stratocumulus","altostratus","cumulonimbus","blank","blank"
+	"altocumulus","cumulonimbus1","cirrocumulus","nimbostratus1","blank",
+	"cumulonimbus2","stratus","nimbostratus2","cirrus","cirrostratus",
+	"stratocumulus","altostratus","cumulonimbus3","blank","blank"
 ]
 
 let init_stability_clouds = [
-	"altocumulus","blank","stratus","blank","nimbostratus", 
-	"cirrus","cumulonimbus","cirrostratus", "altostratus","blank"
+	"altocumulus","blank","stratus","blank","nimbostratus1", 
+	"cirrus","cumulonimbus1","cirrostratus", "altostratus","blank"
                     ]
 let clouds = []
 let forms = ["streaks","sheets","heaps","rain","rain"]
@@ -70,7 +70,8 @@ class Cloud {
 		let bmap = new createjs.Bitmap("assets/"+name+".png")
 		bmap.scaleX = 0.5
 		bmap.scaleY = 0.5
-		let txt = new createjs.Text(name,"12px Arial","#FFF")
+		let title = name.startsWith("cumulonimbus")?"cumulonimus":name.startsWith("nimbostratus")?"nimbostratus":name
+		let txt = new createjs.Text(title,"12px Arial","#FFF")
 		txt.x = 15
 		txt.y = 85
 		cloud.addChild(bmap)
