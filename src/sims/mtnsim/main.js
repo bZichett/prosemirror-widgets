@@ -7,15 +7,15 @@ createjs.MotionGuidePlugin.install()
 createjs.Sound.registerPlugins([createjs.WebAudioPlugin, createjs.HTMLAudioPlugin, createjs.FlashAudioPlugin])
 createjs.Ticker.frameRate = 20
 
-function saturation(temp) { return 10.0 * 0.611 * Math.exp(17.27*temp/(temp+273.16-35.86)) }
-function icesaturation(temp) { return 10.0 * 0.611 * Math.exp(21.87*temp/(temp+273.16-7.66)) }
+function saturation(temp) { return 6.11 * Math.exp(17.27*temp/(temp+273.16-35.86)) }
+function icesaturation(temp) { return 6.11 * Math.exp(21.87*temp/(temp+273.16-7.66)) }
 function humidity(temp, vapor) { return 100.0 * vapor/saturation(temp)}
-function dewpoint(temp,vapor) { return temp - ((100.0-humidity(temp,vapor))/5.0) }
+function dewpoint(vapor) { return 2354.0/(9.4041-Math.log10(vapor))-273.0 }
+function vapor(dewpoint) { return Math.exp(Math.log(10)*(9.4041-2354.0/(dewpoint+273.0))) }
 
 function getCol(val) {
-	let v = val.toFixed(1)
 	let td = document.createElement("td")
-	td.appendChild(document.createTextNode(v))
+	td.appendChild(document.createTextNode(val))
 	return td
 }
 
@@ -39,16 +39,13 @@ function getDelete(row) {
 
 function getRow(json,row) {
 	let tr = document.createElement("tr")
-	tr.appendChild(getCol(json.start.temp))
-	tr.appendChild(getCol(json.start.vapor))
-	tr.appendChild(getCol(json.start.dewpoint))
-	tr.appendChild(getCol(json.temp))
-	tr.appendChild(getCol(json.vapor))
-	tr.appendChild(getCol(json.dewpoint))
-	if (json.cloudbase > 0)
-		tr.appendChild(getCol(json.cloudbase))
-	else
-		tr.appendChild(document.createElement("td").appendChild(document.createTextNode("Clear")))
+	tr.appendChild(getCol(json.start.temp.toFixed(1)))
+	tr.appendChild(getCol(json.start.vapor.toFixed(1)))
+	tr.appendChild(getCol(json.start.dewpoint.toFixed(1)))
+	tr.appendChild(getCol(json.temp.toFixed(1)))
+	tr.appendChild(getCol(json.vapor.toFixed(1)))
+	tr.appendChild(getCol(json.dewpoint.toFixed(1)))
+	tr.appendChild(getCol(json.cloudbase > 0?json.cloudbase.toFixed(1):"Clear"))
 	tr.appendChild(getDelete(row))
 	return tr
 }
@@ -88,12 +85,31 @@ class Trial {
 	}
 }
 
+class Readout {
+	constructor() {
+		this.altitude = document.getElementById("altitudereadout")
+		this.temp = document.getElementById("tempreadout")
+		this.vapor = document.getElementById("vaporreadout")
+		this.dewpoint = document.getElementById("dewpointreadout")
+	}
+	
+	update(trial) {
+		this.altitude.value = trial.altitude.toFixed(1)
+		this.temp.value = trial.temp.toFixed(1)
+		this.vapor.value = trial.vapor.toFixed(1)
+		this.dewpoint.value = trial.dewpoint.toFixed(1)
+	}
+}
+
 class Settings {
 	constructor() {
+		this.readout = new Readout()
 		this.temp = document.getElementById("temp")
 		this.vapor = document.getElementById("vapor")
+		this.dewpoint = document.getElementById("dewpoint")
 		this.tempout = document.getElementById("tempout")
 		this.vaporout = document.getElementById("vaporout")
+		this.dewpointout = document.getElementById("dewpointout")
 		this.mute = document.getElementById("mute")
 		this.listener = null
 		function slidef(e,input, out, f) {
@@ -103,24 +119,39 @@ class Settings {
 		}
 		// IE doesn't have an input event but a change event
 		let event = /msie|trident/g.test(window.navigator.userAgent.toLowerCase())?"change":"input"
-		this.temp.addEventListener(event, e => slidef(e,temp,tempout,this.listener))
-		this.vapor.addEventListener(event, e => slidef(e,vapor,vaporout,this.listener))
+		this.temp.addEventListener(event, e => slidef(e,this.temp,this.tempout,this.listener))
+		this.vapor.addEventListener(event, e => slidef(e,this.vapor,this.vaporout,this.listener))
+		this.dewpoint.addEventListener(event, e => slidef(e,this.dewpoint,this.dewpointout,this.listener))
 	}
 	
 	getTemp() { return this.temp.valueAsNumber }
 
 	getVapor() { return this.vapor.valueAsNumber }
 
+	getDewpoint() { return this.dewpoint.valueAsNumber }
+	
 	setTemp(value) {
 		this.temp.value = value
 		this.tempout.value = value.toFixed(1)
+		this.readout.temp.value = this.tempout.value
 	}
 	
 	setVapor(value) {
 		this.vapor.value = value
 		this.vaporout.value = value.toFixed(1)
+		this.readout.vapor.value = this.vaporout.value
 	}
  	
+	setDewpoint(value) {
+		this.dewpoint.value = value
+		this.dewpointout.value = value.toFixed(1)
+		this.readout.dewpoint.value = this.dewpointout.value
+	}
+ 	
+	updateReadout(trial) {
+		this.readout.update(trial)
+	}
+	
 	addListener(listener) { this.listener = listener }
 }
 
@@ -168,10 +199,19 @@ class ETGraph extends Graph {
 		stage.addChild(this.leaf)
 		stage.addChild(this.marker)
 		this.settings.addListener(slider => {
-            if (slider.id == "temp")
+            if (slider.id == "temp") {
                 this.temp = slider.valueAsNumber
-            else if (slider.id == "vapor")
+                this.settings.setTemp(slider.valueAsNumber)
+            } else if (slider.id == "vapor") {
                 this.vapor = slider.valueAsNumber
+                this.settings.setVapor(this.vapor)
+                this.settings.setDewpoint(dewpoint(this.vapor))
+            } else if (slider.id == "dewpoint") {
+                this.dewpoint = slider.valueAsNumber
+                this.settings.setDewpoint(this.dewpoint)
+                this.vapor = vapor(this.dewpoint)
+                this.settings.setVapor(this.vapor)
+            }
             this.moveMarker(true)
 		})
 		this.icegraph = new IceGraph(stage)
@@ -215,6 +255,7 @@ class ETGraph extends Graph {
         	if (updateSettings === true) {
         		this.settings.setTemp(this.temp)
         		this.settings.setVapor(sat)
+        		this.settings.setDewpoint(dewpoint(sat))
         	}
         }
         let x = this.xaxis.getLoc(this.temp)
@@ -330,7 +371,7 @@ class Mtn {
 		document.getElementById("delete_all").addEventListener("click",event => {
 			if (confirm("Delete all data?")) this.deleteResults()
 		})
-		this.trial = new Trial()
+		this.reset()
 		this.showResults()
 	}
 	
@@ -353,16 +394,7 @@ class Mtn {
 		this.render()
 	}
 	play() {
-		this.temp = this.settings.getTemp()
-		this.vapor = this.settings.getVapor()
-		this.trial.init({
-			temp: this.temp,
-			vapor: this.vapor,
-			humidity: humidity(this.temp,this.vapor),
-			dewpoint: dewpoint(this.temp,this.vapor)		
-		})
-		this.factor = 10.0
-		this.lastalt = 0
+		this.reset()
 		this.leaftween = createjs.Tween.get(this.leaf).to({guide:{path:this.path}},12000)
 		this.leaftween.call(() => {
 			if (this.wind) this.wind.stop()
@@ -425,19 +457,21 @@ class Mtn {
  	 
 	update(trial) {
 		let oldA = trial.altitude, oldT = trial.temp
-		trial.altitude = (165 - this.leaf.y)/165 * 5
+		trial.altitude = 5*(165 - this.leaf.y)/165
 		if (trial.altitude < 0) trial.altitude = 0
-		trial.temp = Number(oldT - this.factor * (trial.altitude - oldA))
+		// the lapse rate changes above 800 km
+		trial.temp = Number(oldT - (trial.altitude > 0.8?6.0:10.0) * (trial.altitude - oldA))
 		trial.humidity = humidity(trial.temp,trial.vapor)
-		trial.dewpoint = dewpoint(trial.temp,trial.vapor)
+		trial.dewpoint = dewpoint(trial.vapor)
 		let sat = saturation(trial.temp)
 		if (trial.vapor > sat) {
 			this.animateClouds()
 			trial.vapor = sat
 			trial.humidity = 100
-			this.factor = 6.0
+			this.lapse_rate = 6.0
 		}
-		if (trial.temp > oldT) this.factor = 10.0;
+		if (trial.temp > oldT) this.lapse_rate = 10.0;
+		this.settings.updateReadout(trial)
 	}
 	
 	animateClouds() {
@@ -460,8 +494,19 @@ class Mtn {
 		}
 	}
 	
-	newTrial() {
+	reset() {
 		this.trial = new Trial()
+		this.temp = this.settings.getTemp()
+		this.vapor = this.settings.getVapor()
+		this.lapse_rate = 10.0
+		this.lastalt = 0
+		this.trial.init({
+			temp: this.temp,
+			vapor: this.vapor,
+			humidity: humidity(this.temp,this.vapor),
+			dewpoint: dewpoint(this.vapor)		
+		})
+		this.settings.updateReadout(this.trial)
 	}
 	
 	tick(etgraph, atgraph) {
@@ -528,7 +573,7 @@ class MtnSim {
 				this.atgraph.clear()
 				this.etgraph.render()
 				this.atgraph.render()
-				this.mtn.newTrial()
+				this.mtn.reset()
 				break;
 			}
 		})

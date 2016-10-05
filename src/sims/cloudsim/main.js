@@ -8,14 +8,14 @@ let tool = searchParams.get('tool') || "grid"
 
 let store = getStore()
 let init_grid_clouds = [
-	"altocumulus","cumulonimbus1","cirrocumulus","nimbostratus1","blank",
-	"cumulonimbus2","stratus","nimbostratus2","cirrus","cirrostratus",
-	"stratocumulus","altostratus","cumulonimbus3","blank","blank"
+	"altocumulus1","cumulonimbus1","cirrocumulus1","nimbostratus1","blank",
+	"cumulonimbus2","stratus1","nimbostratus2","cirrus1","cirrostratus1",
+	"stratocumulus1","altostratus1","cumulonimbus3","blank","blank"
 ]
 
 let init_stability_clouds = [
-	"altocumulus","blank","stratus","blank","nimbostratus1", 
-	"cirrus","cumulonimbus1","cirrostratus", "altostratus","blank"
+	"altocumulus1","cumulus1","stratus1","cirrostratus1","nimbostratus1", 
+	"cirrus1","cumulonimbus3","cumulus2", "altostratus1","altocumulus2"
                     ]
 let clouds = []
 let forms = ["streaks","sheets","heaps","rain","rain"]
@@ -70,8 +70,7 @@ class Cloud {
 		let bmap = new createjs.Bitmap("assets/"+name+".png")
 		bmap.scaleX = 0.5
 		bmap.scaleY = 0.5
-		let title = name.startsWith("cumulonimbus")?"cumulonimus":name.startsWith("nimbostratus")?"nimbostratus":name
-		let txt = new createjs.Text(title,"12px Arial","#FFF")
+		let txt = new createjs.Text(name.slice(0,-1),"12px Arial","#FFF")
 		txt.x = 15
 		txt.y = 85
 		cloud.addChild(bmap)
