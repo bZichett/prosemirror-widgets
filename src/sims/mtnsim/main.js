@@ -1,7 +1,16 @@
 import {Graph, getStore} from "../utils"
+import {Url} from "url"
 
 let mtnsim_results = "mtnsim_results"
-let store = getStore()
+let store = getStore(),searchParams = new URLSearchParams(window.location.search.substring(1))
+let tool = searchParams.get('tool')
+
+if (tool == "readout") {
+	let dp = document.getElementById("dp")
+	dp.style.display = "inline-block"
+	let readout = document.getElementById("readout")
+	readout.style.display = "block"
+}
 
 createjs.MotionGuidePlugin.install()
 createjs.Sound.registerPlugins([createjs.WebAudioPlugin, createjs.HTMLAudioPlugin, createjs.FlashAudioPlugin])
