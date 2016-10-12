@@ -1,18 +1,26 @@
 import {EditorState} from "prosemirror/node_modules/prosemirror-state"
-import {EditorView} from "prosemirror/node_modules/prosemirror-view"
-import {schema, DomParser} from "prosemirror/node_modules/prosemirror-schema-basic"
 import {MenuBarEditorView} from "prosemirror/node_modules/prosemirror-menu"
+import {EditorView} from "prosemirror/node_modules/prosemirror-view"
+import {Schema, DOMParser} from "prosemirror/node_modules/prosemirror-model"
+import {schema as baseSchema} from "prosemirror/node_modules/prosemirror-schema-basic"
 import {exampleSetup} from "prosemirror/node_modules/prosemirror-example-setup"
+import {addListNodes} from "prosemirror/node_modules/prosemirror-schema-list"
+
+let schema = new Schema({
+	nodes: addListNodes(baseSchema.nodeSpec, "paragraph block*", "block"),
+	marks: baseSchema.markSpec
+})
 
 let content = document.querySelector("#content")
  
 let view = new MenuBarEditorView(document.querySelector("#editor"), {
+	floatingMenu: true,
 	state: EditorState.create({
 		doc: DOMParser.fromSchema(schema).parse(content),
-		plugins: [exampleSetup({schema: schema})]
+		plugins: [exampleSetup({schema})]
 	}),
 	onAction: function(action) {
-	    view.updateState(view.state.applyAction(action))
+	    view.updateState(view.editor.state.applyAction(action))
 	}
 }) 
 

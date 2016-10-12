@@ -1,7 +1,7 @@
 import {Graph, getStore} from "../utils"
 import {Url} from "url"
 
-let mtnsim_results = "mtnsim_results"
+let mtnsim_results = "mtnsim_results", LAPSE_RATE = -10.0
 let store = getStore(),searchParams = new URLSearchParams(window.location.search.substring(1))
 let tool = searchParams.get('tool')
 
@@ -15,12 +15,11 @@ if (tool == "readout") {
 createjs.MotionGuidePlugin.install()
 createjs.Sound.registerPlugins([createjs.WebAudioPlugin, createjs.HTMLAudioPlugin, createjs.FlashAudioPlugin])
 createjs.Ticker.frameRate = 20
-
-function saturation(temp) { return 6.11 * Math.exp(17.27*temp/(temp+273.16-35.86)) }
-function icesaturation(temp) { return 6.11 * Math.exp(21.87*temp/(temp+273.16-7.66)) }
-function humidity(temp, vapor) { return 100.0 * vapor/saturation(temp)}
+function teten(T,a,b) { return 6.1078*Math.exp(a*T/(T+273.16-b)) }
+function saturation(temp) { return teten(temp,17.269,35.86) }
+function icesaturation(temp) { return teten(temp,21.874,7.66) }
 function dewpoint(vapor) { return 2354.0/(9.4041-Math.log10(vapor))-273.0 }
-function vapor(dewpoint) { return Math.exp(Math.log(10)*(9.4041-2354.0/(dewpoint+273.0))) }
+function pressure(alt) { return 1000-125*alt }
 
 function getCol(val) {
 	let td = document.createElement("td")
@@ -67,8 +66,8 @@ class Trial {
 	    this.temp = 0
 	    this.altitude = 0
 	    this.vapor = 0
-	    this.humidity = 0
 	    this.dewpoint = 0
+	    this.lapse = 0
 	}
 	
 	toJSON() {
@@ -78,7 +77,6 @@ class Trial {
 		    temp: this.temp,
 		    altitude: this.altitude,
 		    vapor: this.vapor,
-		    humidity: this.humidity,
 		    dewpoint: this.dewpoint
 		}
 	}
@@ -89,8 +87,8 @@ class Trial {
 	    this.temp = start.temp
 	    this.altitude = 0
 	    this.vapor = start.vapor
-	    this.humidity = start.humidity
 	    this.dewpoint = start.dewpoint
+	    this.lapse = LAPSE_RATE
 	}
 }
 
@@ -237,7 +235,7 @@ class ETGraph extends Graph {
 	
 	plotSaturation() {
         for (let t = this.xaxis.min; t < 0; t++) this.plot(t,icesaturation(t))
-        for (let t = 0; t < this.xaxis.max; t++) this.plot(t,saturation(t))
+        for (let t = 0; t <= this.xaxis.max; t++) this.plot(t,saturation(t))
         this.endPlot()
 	}
 	
@@ -296,7 +294,7 @@ class ATGraph extends Graph {
 			minX: -20,
 			maxX: 30,
 			minY: 0,
-			maxY: 5,
+			maxY: 4,
 			majorX: 10,
 			minorX: 5,
 			majorY: 1,
@@ -375,7 +373,7 @@ class Mtn {
 		this.running = false
 		this.lightning = false
 		this.lighttick = 0
-		this.path = [50,164, 60,155, 74,152, 80,140, 90,131, 100,125, 112,122, 120,110, 137,92, 140,75, 151,64, 150,60, 173,56, 185,60, 204,70, 210,80, 221,92, 221,95, 224,105, 230,110, 246,121, 250,130, 268,141, 280,150, 290,164]
+		this.path = [50,165, 60,155, 74,152, 80,140, 90,131, 100,125, 112,122, 120,110, 137,92, 140,75, 151,64, 150,60, 173,56, 185,60, 204,70, 210,80, 221,92, 221,95, 224,105, 230,110, 246,121, 250,130, 268,141, 280,165, 290,165]
 		this.results = document.getElementById("results_table")
 		document.getElementById("delete_all").addEventListener("click",event => {
 			if (confirm("Delete all data?")) this.deleteResults()
@@ -404,7 +402,7 @@ class Mtn {
 	}
 	play() {
 		this.reset()
-		this.leaftween = createjs.Tween.get(this.leaf).to({guide:{path:this.path}},12000)
+		this.leaftween = createjs.Tween.get(this.leaf).to({guide:{path:this.path}},10000)
 		this.leaftween.call(() => {
 			if (this.wind) this.wind.stop()
 			this.running = false
@@ -466,20 +464,18 @@ class Mtn {
  	 
 	update(trial) {
 		let oldA = trial.altitude, oldT = trial.temp
-		trial.altitude = 5*(165 - this.leaf.y)/165
+		trial.altitude = 4*(165 - this.leaf.y)/165
 		if (trial.altitude < 0) trial.altitude = 0
-		// the lapse rate changes above 800 km
-		trial.temp = Number(oldT - (trial.altitude > 0.8?6.0:10.0) * (trial.altitude - oldA))
-		trial.humidity = humidity(trial.temp,trial.vapor)
+		trial.vapor *= pressure(trial.altitude)/pressure(oldA)
+		trial.temp += trial.lapse * (trial.altitude - oldA)
 		trial.dewpoint = dewpoint(trial.vapor)
 		let sat = saturation(trial.temp)
 		if (trial.vapor > sat) {
 			this.animateClouds()
 			trial.vapor = sat
-			trial.humidity = 100
-			this.lapse_rate = 6.0
+			trial.lapse = -6.0
 		}
-		if (trial.temp > oldT) this.lapse_rate = 10.0;
+		if (trial.temp > oldT) trial.lapse = LAPSE_RATE
 		this.settings.updateReadout(trial)
 	}
 	
@@ -507,12 +503,11 @@ class Mtn {
 		this.trial = new Trial()
 		this.temp = this.settings.getTemp()
 		this.vapor = this.settings.getVapor()
-		this.lapse_rate = 10.0
+		this.lapse_rate = LAPSE_RATE
 		this.lastalt = 0
 		this.trial.init({
 			temp: this.temp,
 			vapor: this.vapor,
-			humidity: humidity(this.temp,this.vapor),
 			dewpoint: dewpoint(this.vapor)		
 		})
 		this.settings.updateReadout(this.trial)
