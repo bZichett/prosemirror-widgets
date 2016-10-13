@@ -1,7 +1,7 @@
 import {Graph, getStore} from "../utils"
 import {Url} from "url"
 
-let mtnsim_results = "mtnsim_results", LAPSE_RATE = -10.0
+let mtnsim_results = "mtnsim_results", LAPSE_RATE = -9.8
 let store = getStore(),searchParams = new URLSearchParams(window.location.search.substring(1))
 let tool = searchParams.get('tool')
 
@@ -373,7 +373,8 @@ class Mtn {
 		this.running = false
 		this.lightning = false
 		this.lighttick = 0
-		this.path = [50,165, 60,155, 74,152, 80,140, 90,131, 100,125, 112,122, 120,110, 137,92, 140,75, 151,64, 150,60, 173,56, 185,60, 204,70, 210,80, 221,92, 221,95, 224,105, 230,110, 246,121, 250,130, 268,141, 280,165, 290,165]
+		//this.path = [50,165, 60,155, 74,152, 80,140, 90,131, 100,125, 112,122, 120,110, 137,92, 140,75, 151,64, 150,60, 173,56, 185,60, 204,70, 210,80, 221,92, 221,95, 224,105, 230,110, 246,121, 250,130, 268,141, 280,165, 290,165]
+		this.path = [50,165, 60,155, 74,152, 80,140, 90,131, 100,125, 112,122, 120,110, 137,92, 140,75, 151,66, 150,66, 173,66, 185,66, 204,70, 210,80, 221,92, 221,95, 224,105, 230,110, 246,121, 250,130, 268,141, 280,165, 290,165]
 		this.results = document.getElementById("results_table")
 		document.getElementById("delete_all").addEventListener("click",event => {
 			if (confirm("Delete all data?")) this.deleteResults()
