@@ -439,7 +439,6 @@ class DrawSim {
 			this.mainstage.canvas.height = bnd.height + 40
 			let panel = document.getElementById("panel")
 			panel.width = bnd.width + 40
-			console.log(panel.width)
 		}
 		this.showSymbols()
 		if (edit) {
